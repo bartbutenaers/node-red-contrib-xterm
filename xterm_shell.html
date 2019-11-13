@@ -1,0 +1,152 @@
+<!--
+  Copyright 2019, Bart Butenaers
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<script src="xterm_shell/undefined/js/xterm.js"></script>
+
+<script type="text/javascript">
+    RED.nodes.registerType('xterm_shell',{
+        category: 'network', // TODO
+        color: 'rgb( 63, 173, 181)',
+        defaults: {
+            rows: {value: 60, required: true},
+            columns: {value: 120, required: true},
+            name: {value: ''}
+        },
+        inputs:1,
+        outputs:0,
+        icon: "push.png",
+        align: 'left',
+        paletteLabel: "xterm shell",
+        label: function() {
+            return this.name || "xterm shell";
+        },
+        oneditprepare: function() {
+            var node = this;
+			
+			function sendDataToServer(data) {
+				// Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
+				var base64Data = btoa(data);
+                $.ajax( {url: "xterm_shell/" + node.id + "/write/" + base64Data} );
+			}
+            
+            debugger;
+            
+            // Start the pty process on the server side
+            $.ajax( {url: "xterm_shell/" + node.id + "/start/undefined"} );
+
+            $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/css/xterm.css" type="text/css" />');
+
+            // TODO: andere settings ook instelbaar maken op de config screen
+            var terminalOptions = {
+                rows: node.rows,
+                cols: node.columns,
+                useStyle: true,
+                screenKeys: true,
+                cursorBlink: true,
+				fontFamily: 'Courier New'
+            };
+            
+            var terminalContainer = document.getElementById('terminalContainer');
+            
+            // Store the node id, to determine afterwards which node instance we are dealing with
+            terminalContainer.setAttribute("data-node-id", node.id);
+            
+            node.terminal = new Terminal(terminalOptions);
+            
+            // Show the terminal inside the specified DIV element
+            node.terminal.open(terminalContainer);
+
+            node.terminal.onData(function(data) {
+				sendDataToServer(data);
+            });
+            
+			node.handleWebsocketData = function(event, data) {
+                if (data.type === "binary") {
+                    // Convert the string data back to an uint8array
+                    var buf = new ArrayBuffer(data.data.length*1); // 1 byte for each char
+                    var bufView = new Uint8Array(buf);
+                    for (var i=0; i<data.data.length; i++) {
+                        bufView[i] = data.data.charCodeAt(i);
+                    }
+                    
+                    node.terminal.write(bufView);
+                    // TODO controleren of het voor deze node is ??? Want er kunnen verschillende instances van de flow editor open zijn !!!!!!!!!!!
+                    // RED.nodes.node(data.id))
+                }
+                else { // data.type === "string"
+                    node.terminal.write(data.data);
+                }
+            }
+            
+            RED.comms.subscribe('xterm_shell', node.handleWebsocketData);
+			
+			// Created with http://www.asciiarts.net/ where I used font 'Standard.flf'
+			// TODO for some reason it doesn't show clearly : see font in constructor and in DIV element style
+			//node.terminal.write('\r\n***  _   _           _            ____  _____ ____   ***');
+			//node.terminal.write('\r\n*** | \ | | ___   __| | ___      |  _ \| ____|  _ \  ***');
+			//node.terminal.write('\r\n*** |  \| |/ _ \ / _` |/ _ \_____| |_) |  _| | | | | ***');
+			//node.terminal.write('\r\n*** | |\  | (_) | (_| |  __/_____|  _ <| |___| |_| | ***');
+			//node.terminal.write('\r\n*** |_| \_|\___/ \__,_|\___|     |_| \_\_____|____/  ***');
+			//node.terminal.write('\r\n'); 
+   
+            if (node.startupCommand &&  node.startupCommand!== "") {
+                sendDataToServer(node.startupCommand);
+            }
+            
+            node.terminal.focus();
+        },
+        oneditsave: function() {
+            var node = this;
+            
+            // Stop the xterm terminal on the client side (remark 'destroy' has been removed...)
+            node.terminal.dispose(); 
+            
+            // Stop the pty process on the server side
+            $.ajax( {url: "xterm_shell/" + node.id + "/stop/undefined" } );
+			
+			if (node.handleWebsocketData) {
+				RED.comms.unsubscribe('xterm_shell', node.handleWebsocketData);
+			}
+        },
+        oneditcancel: function() {
+            var node = this;
+            
+            // Stop the xterm terminal on the client side (remark 'destroy' has been removed...)
+            node.terminal.dispose();
+            
+            // Stop the pty process on the server side
+            $.ajax( {url: "xterm_shell/" + node.id + "/stop/undefined" } );
+			
+			if (node.handleWebsocketData) {
+				RED.comms.unsubscribe('xterm_shell', node.handleWebsocketData);
+			}
+        }
+    });
+</script>
+
+<script type="text/html" data-template-name="xterm_shell">
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    <div class="form-row">
+        <label for="node-input-startupCommand"><i class="icon-tag"></i> Start command</label>
+        <input type="text" id="node-input-startupCommand" placeholder="cd $HOME/.node-red">
+    </div>
+    <br>
+    <div class="form-row">
+        <div id="terminalContainer" style="display: inline-block; font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 12px; color: rgb(240, 240, 240); background: #383734 !important; padding: 3px; border: none !important;"></div>
+    </div>
+</script>
+<script type="text/html" data-help-name="xterm_shell">
+    <p>A Node Red node to offer a shell, which allows to execute command line instructions in the operating system.</p>
+</script>
