@@ -124,21 +124,16 @@ module.exports = function(RED) {
     RED.nodes.registerType("xterm_shell", XtermShellNode);
     
     // Process the requests from the flow editor
-    RED.httpAdmin.get('/xterm_shell/*', function(req, res) {
+    RED.httpAdmin.get('/xterm_shell/:config_node_id/:command/:info', function(req, res) {
         var xtermShellNode;
-		
-		var params = req.params[0] && req.params[0].split('/'); 
-		var config_node_id = params[0];
-		var command = params[1];
-		var info = params[2];
         
-        if (command !== "js" && command !== "css") {
+        if (req.params.command !== "js" && req.params.command !== "css") {
             // There might be N different xterm shell nodes active, each with their own terminal.  So get the right one ...
-            xtermShellNode = RED.nodes.getNode(config_node_id);
+            xtermShellNode = RED.nodes.getNode(req.params.config_node_id);
         }     
         // TODO fout geven als xtermShellNode null is
         
-        switch (command) {
+        switch (req.params.command) {
             case "js":
                 // TODO kunnen we zomaar files uit een andere npm module halen (die als dependency staat) ???
                 var options = {
@@ -147,7 +142,7 @@ module.exports = function(RED) {
                 };
         
                 // Send the requested .js file to the client (info contains .js file name)
-                res.sendFile(info, options);
+                res.sendFile(req.params.info, options);
                 break;
             case "css":
                 var options = {
@@ -156,7 +151,7 @@ module.exports = function(RED) {
                 };
        
                 // Send the requested .css file to the client (info contains .css file name)
-                res.sendFile(info, options);
+                res.sendFile(req.params.info, options);
                 break;
             case "start":
                 xtermShellNode.startTerminal({});
@@ -167,7 +162,7 @@ module.exports = function(RED) {
                 res.status(200).json('success');
                 break;
             case "write":        
-				var base64Decoded = new Buffer(info, 'base64').toString('ascii');
+				var base64Decoded = new Buffer(req.params.info, 'base64').toString('ascii');
                 // Process the command line data (info contains command line input)
                 xtermShellNode.writeDataToTerminal(base64Decoded);
                 res.status(200).json('success');
