@@ -58,20 +58,13 @@ module.exports = function(RED) {
                         console.log("data send via websocket to client");
                         //TODO send data in output message ???? node.send(data);
                         
-                        if (node.useBinaryTransport) {
-                            // Pass the uint8array as a string, otherwise the client would receive "[object Object]" ...
-                            var binaryAsString = String.fromCharCode.apply(null, data);
-                            RED.comms.publish("xterm_shell", { id: node.id, type: 'binary', data: binaryAsString });
-                        }
-                        else {
-                            RED.comms.publish("xterm_shell", { id: node.id, type: 'string', data: data });
-                        }
-                        
-                        // Pass the uint8array as a string, otherwise the client would receive "[object Object]" ...
-                        //TODO ???? var dataAsString = String.fromCharCode.apply(null, data);
-                        
-                        
-                    } catch (ex) {
+                        // Convert the terminal data to base64, before sending it to the client
+						var buff = new Buffer(data);
+						var base64Data = buff.toString('base64');
+
+                        RED.comms.publish("xterm_shell", { id: node.id, data: base64Data });
+                    } 
+					catch (ex) {
                         // The WebSocket is not open, ignore
                     }
                 });
