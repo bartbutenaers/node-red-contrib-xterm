@@ -70,21 +70,13 @@
             });
             
 			node.handleWebsocketData = function(event, data) {
-                if (data.type === "binary") {
-                    // Convert the string data back to an uint8array
-                    var buf = new ArrayBuffer(data.data.length*1); // 1 byte for each char
-                    var bufView = new Uint8Array(buf);
-                    for (var i=0; i<data.data.length; i++) {
-                        bufView[i] = data.data.charCodeAt(i);
-                    }
+ 				// TODO controleren of het voor deze node is ??? Want er kunnen verschillende instances van de flow editor open zijn !!!!!!!!!!!
+                // RED.nodes.node(data.id))
+
+				// Convert the base64 encoded string back to a string
+                var decodedString = atob(data.data);
                     
-                    node.terminal.write(bufView);
-                    // TODO controleren of het voor deze node is ??? Want er kunnen verschillende instances van de flow editor open zijn !!!!!!!!!!!
-                    // RED.nodes.node(data.id))
-                }
-                else { // data.type === "string"
-                    node.terminal.write(data.data);
-                }
+                node.terminal.write(decodedString);
             }
             
             RED.comms.subscribe('xterm_shell', node.handleWebsocketData);
