@@ -19,6 +19,25 @@ module.exports = function(RED) {
     var os = require('os');
     var pty = require('node-pty');
     var process = require('process');
+	var path = require('path');
+	const fs = require('fs')
+
+	// Determining the path to the files in the dependent modules once.
+	// See https://discourse.nodered.org/t/use-files-from-dependent-npm-module/17978/5?u=bartbutenaers
+	var xtermPath = require.resolve("xterm");
+	xtermPath = xtermPath.substring(0, xtermPath.indexOf("xterm") + 5);
+	
+	xtermJsPath = path.join(xtermPath, 'lib', 'xterm.js');
+	if (!fs.existsSync(xtermJsPath)) {
+		console.log("Javascript file " + xtermJsPath + " does not exist");
+		xtermJsPath = null;
+	}
+	
+	xtermCssPath = path.join(xtermPath, 'css', 'xterm.css');
+	if (!fs.existsSync(xtermCssPath)) {
+		console.log("Css file " + xtermCssPath + " does not exist");
+		xtermCssPath = null;
+	}	  
 
     function XtermShellNode(config) {
         RED.nodes.createNode(this, config);
@@ -130,28 +149,30 @@ module.exports = function(RED) {
         if (req.params.command !== "js" && req.params.command !== "css") {
             // There might be N different xterm shell nodes active, each with their own terminal.  So get the right one ...
             xtermShellNode = RED.nodes.getNode(req.params.config_node_id);
+			
+			if (!xtermShellNode) {
+				res.status(404).json('Cannot find node with id = ' + req.params.config_node_id);
+			}
         }     
-        // TODO fout geven als xtermShellNode null is
-        
+	 
         switch (req.params.command) {
             case "js":
-                // TODO kunnen we zomaar files uit een andere npm module halen (die als dependency staat) ???
-                var options = {
-                    root: "/home/pi/.node-red/node_modules/xterm/lib",
-                    dotfiles: 'deny'
-                };
-        
-                // Send the requested .js file to the client (info contains .js file name)
-                res.sendFile(req.params.info, options);
+                if (xtermJsPath) {
+					// Send the requested .js file to the client (info contains .js file name)
+					res.sendFile(xtermJsPath);
+				}
+				else {
+					res.status(404).json('Javascript file does not exist');
+				}
                 break;
             case "css":
-                var options = {
-                    root: "/home/pi/.node-red/node_modules/xterm/css",
-                    dotfiles: 'deny'
-                };
-       
-                // Send the requested .css file to the client (info contains .css file name)
-                res.sendFile(req.params.info, options);
+                if (xtermCssPath) {
+					// Send the requested .css file to the client (info contains .css file name)
+					res.sendFile(xtermCssPath);
+				}
+				else {
+					res.status(404).json('Css file does not exist');
+				}
                 break;
             case "start":
                 xtermShellNode.startTerminal({});
