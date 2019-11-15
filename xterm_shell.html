@@ -31,14 +31,12 @@
         },
         oneditprepare: function() {
             var node = this;
-			
-			function sendDataToServer(data) {
-				// Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
-				var base64Data = btoa(data);
+
+            function sendDataToServer(data) {
+                // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
+                var base64Data = btoa(data);
                 $.ajax( {url: "xterm_shell/" + node.id + "/write/" + base64Data} );
-			}
-            
-            debugger;
+            }
             
             // Start the pty process on the server side
             $.ajax( {url: "xterm_shell/" + node.id + "/start/undefined"} );
@@ -52,7 +50,7 @@
                 useStyle: true,
                 screenKeys: true,
                 cursorBlink: true,
-				fontFamily: 'Courier New'
+                fontFamily: 'Courier New'
             };
             
             var terminalContainer = document.getElementById('terminalContainer');
@@ -66,14 +64,14 @@
             node.terminal.open(terminalContainer);
 
             node.terminal.onData(function(data) {
-				sendDataToServer(data);
+                sendDataToServer(data);
             });
             
-			node.handleWebsocketData = function(event, data) {
- 				// TODO controleren of het voor deze node is ??? Want er kunnen verschillende instances van de flow editor open zijn !!!!!!!!!!!
+            node.handleWebsocketData = function(event, data) {
+                // TODO controleren of het voor deze node is ??? Want er kunnen verschillende instances van de flow editor open zijn !!!!!!!!!!!
                 // RED.nodes.node(data.id))
 
-				// Convert the base64 encoded string back to a string
+                // Convert the base64 encoded string back to a string
                 var decodedString = atob(data.data);
                     
                 node.terminal.write(decodedString);
@@ -93,8 +91,13 @@
             if (node.startupCommand &&  node.startupCommand!== "") {
                 sendDataToServer(node.startupCommand);
             }
+			
+            $("#node-clear-terminal").on("click", function (e) {
+                node.terminal.clear();      
+            });
             
-            node.terminal.focus();
+            // TODO auto focus doesn't work ...
+            node.terminal.textarea.focus();
         },
         oneditsave: function() {
             var node = this;
@@ -105,9 +108,9 @@
             // Stop the pty process on the server side
             $.ajax( {url: "xterm_shell/" + node.id + "/stop/undefined" } );
 			
-			if (node.handleWebsocketData) {
-				RED.comms.unsubscribe('xterm_shell', node.handleWebsocketData);
-			}
+            if (node.handleWebsocketData) {
+                RED.comms.unsubscribe('xterm_shell', node.handleWebsocketData);
+            }
         },
         oneditcancel: function() {
             var node = this;
@@ -118,9 +121,9 @@
             // Stop the pty process on the server side
             $.ajax( {url: "xterm_shell/" + node.id + "/stop/undefined" } );
 			
-			if (node.handleWebsocketData) {
-				RED.comms.unsubscribe('xterm_shell', node.handleWebsocketData);
-			}
+            if (node.handleWebsocketData) {
+                RED.comms.unsubscribe('xterm_shell', node.handleWebsocketData);
+            }
         }
     });
 </script>
@@ -135,6 +138,11 @@
         <input type="text" id="node-input-startupCommand" placeholder="cd $HOME/.node-red">
     </div>
     <br>
+	<div class="form-row">
+	    <button id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
+                <i class="fa fa-code"></i>    
+            </button>
+    </div>
     <div class="form-row">
         <div id="terminalContainer" style="display: inline-block; font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 12px; color: rgb(240, 240, 240); background: #383734 !important; padding: 3px; border: none !important;"></div>
     </div>
