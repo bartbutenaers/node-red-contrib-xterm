@@ -10,9 +10,10 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-<script src="xterm_shell/undefined/js/xterm.js"></script>
+<script src="xterm_shell/undefined/undefined/js/xterm.js"></script>
+<script src="xterm_shell/undefined/undefined/js/xterm-addon-fit.js"></script>
 
-<script type="text/javascript">
+<script type="text/javascript">  
     RED.nodes.registerType('xterm_shell',{
         category: 'network', // TODO
         color: 'rgb( 63, 173, 181)',
@@ -31,18 +32,34 @@
         },
         oneditprepare: function() {
             var node = this;
-
-            function sendDataToServer(data) {
-                // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
-                var base64Data = btoa(data);
-                $.ajax( {url: "xterm_shell/" + node.id + "/write/" + base64Data} );
+            
+            // See https://www.w3resource.com/javascript-exercises/javascript-math-exercise-23.php
+            function createUUID(){
+                var dt = new Date().getTime();
+                var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = (dt + Math.random()*16)%16 | 0;
+                    dt = Math.floor(dt/16);
+                    return (c=='x' ? r :(r&0x3|0x8)).toString(16);
+                });
+                return uuid;
             }
             
+            function sendDataToServer(terminalId, data) {
+                // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
+                var base64Data = btoa(data);
+                $.ajax( {url: "xterm_shell/" + node.id + "/" + terminalId + "/write/" + base64Data} );
+            }
+            
+            // Multiple flow editors can be open simultaneously, which means multiple terminals can be open simultaneously.
+            // All of these terminals need to work completely independent from each: we don't want the data from these terminals
+            // to become mixed!  Therefore we will generate a 
+            node.terminalId = createUUID();
+
             // Start the pty process on the server side
-            $.ajax( {url: "xterm_shell/" + node.id + "/start/undefined"} );
+            $.ajax( {url: "xterm_shell/" + node.id + "/" + node.terminalId + "/start/undefined"} );
 
-            $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/css/xterm.css" type="text/css" />');
-
+            $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/undefined/css/xterm.css" type="text/css" />');
+            
             // TODO: andere settings ook instelbaar maken op de config screen
             var terminalOptions = {
                 rows: node.rows,
@@ -59,39 +76,41 @@
             terminalContainer.setAttribute("data-node-id", node.id);
             
             node.terminal = new Terminal(terminalOptions);
-            
+     
             // Show the terminal inside the specified DIV element
             node.terminal.open(terminalContainer);
 
             node.terminal.onData(function(data) {
-                sendDataToServer(data);
+                sendDataToServer(node.terminalId, data);
             });
             
-            node.handleWebsocketData = function(event, data) {
-                // TODO controleren of het voor deze node is ??? Want er kunnen verschillende instances van de flow editor open zijn !!!!!!!!!!!
-                // RED.nodes.node(data.id))
-
-                // Convert the base64 encoded string back to a string
-                var decodedString = atob(data.data);
-                    
-                node.terminal.write(decodedString);
+            node.handleWebsocketData = function(event, dataAsString) {
+                var data = JSON.parse(dataAsString);
+                
+                // Only show data that is intended for this terminal
+                if (data.nodeId === node.id && data.terminalId === node.terminalId) { 
+                    // Convert the base64 encoded string back to a string
+                    var decodedString = atob(data.data);
+                        
+                    node.terminal.write(decodedString);
+                }
             }
             
             RED.comms.subscribe('xterm_shell', node.handleWebsocketData);
-			
-			// Created with http://www.asciiarts.net/ where I used font 'Standard.flf'
-			// TODO for some reason it doesn't show clearly : see font in constructor and in DIV element style
-			//node.terminal.write('\r\n***  _   _           _            ____  _____ ____   ***');
-			//node.terminal.write('\r\n*** | \ | | ___   __| | ___      |  _ \| ____|  _ \  ***');
-			//node.terminal.write('\r\n*** |  \| |/ _ \ / _` |/ _ \_____| |_) |  _| | | | | ***');
-			//node.terminal.write('\r\n*** | |\  | (_) | (_| |  __/_____|  _ <| |___| |_| | ***');
-			//node.terminal.write('\r\n*** |_| \_|\___/ \__,_|\___|     |_| \_\_____|____/  ***');
-			//node.terminal.write('\r\n'); 
+            
+            // Created with http://www.asciiarts.net/ where I used font 'Standard.flf'
+            // TODO for some reason it doesn't show clearly : see font in constructor and in DIV element style
+            //node.terminal.write('\r\n***  _   _           _            ____  _____ ____   ***');
+            //node.terminal.write('\r\n*** | \ | | ___   __| | ___      |  _ \| ____|  _ \  ***');
+            //node.terminal.write('\r\n*** |  \| |/ _ \ / _` |/ _ \_____| |_) |  _| | | | | ***');
+            //node.terminal.write('\r\n*** | |\  | (_) | (_| |  __/_____|  _ <| |___| |_| | ***');
+            //node.terminal.write('\r\n*** |_| \_|\___/ \__,_|\___|     |_| \_\_____|____/  ***');
+            //node.terminal.write('\r\n'); 
    
             if (node.startupCommand &&  node.startupCommand!== "") {
-                sendDataToServer(node.startupCommand);
+                sendDataToServer(node.terminalId, node.startupCommand);
             }
-			
+            
             $("#node-clear-terminal").on("click", function (e) {
                 node.terminal.clear();      
             });
@@ -106,8 +125,8 @@
             node.terminal.dispose(); 
             
             // Stop the pty process on the server side
-            $.ajax( {url: "xterm_shell/" + node.id + "/stop/undefined" } );
-			
+            $.ajax( {url: "xterm_shell/" + node.id + "/" + node.terminalId +"/stop/undefined" } );
+            
             if (node.handleWebsocketData) {
                 RED.comms.unsubscribe('xterm_shell', node.handleWebsocketData);
             }
@@ -119,8 +138,8 @@
             node.terminal.dispose();
             
             // Stop the pty process on the server side
-            $.ajax( {url: "xterm_shell/" + node.id + "/stop/undefined" } );
-			
+            $.ajax( {url: "xterm_shell/" + node.id + "/" + node.terminalId + "/stop/undefined" } );
+            
             if (node.handleWebsocketData) {
                 RED.comms.unsubscribe('xterm_shell', node.handleWebsocketData);
             }
@@ -138,10 +157,10 @@
         <input type="text" id="node-input-startupCommand" placeholder="cd $HOME/.node-red">
     </div>
     <br>
-	<div class="form-row">
-	    <button id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
-                <i class="fa fa-code"></i>    
-            </button>
+    <div class="form-row">
+        <button id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
+            <i class="fa fa-code"></i>    
+        </button>
     </div>
     <div class="form-row">
         <div id="terminalContainer" style="display: inline-block; font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 12px; color: rgb(240, 240, 240); background: #383734 !important; padding: 3px; border: none !important;"></div>
