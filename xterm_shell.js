@@ -17,7 +17,7 @@
 module.exports = function(RED) {
     var settings = RED.settings;
     var os = require('os');
-    var pty = require('node-pty');
+    var pty = require('node-pty-prebuilt-multiarch');
     var process = require('process');
     var path = require('path');
     const fs = require('fs');
@@ -174,7 +174,9 @@ module.exports = function(RED) {
             xtermShellNode = RED.nodes.getNode(req.params.node_id);
             
             if (!xtermShellNode) {
-                res.status(404).json('Cannot find node with id = ' + req.params.node_id);
+                console.log('Cannot find node with id = ' + req.params.node_id);
+                res.status(404).json('Cannot find xterm node with id = ' + req.params.node_id);
+                return;
             }
         }     
 
@@ -200,7 +202,9 @@ module.exports = function(RED) {
                         }
                         break;    
                     default:
-                        console.log("Unknown javascript file '" + req.params.info + "'");
+                        // Don't log because xterm also tries to load some mapping files, which are required to
+                        // do source mapping from Javascript to the original Typescript code.  But we don't need that.
+                        //console.log("Unknown javascript file '" + req.params.info + "'");
                         res.status(404).json('Unknown javascript file');                        
                 }
                 break;
