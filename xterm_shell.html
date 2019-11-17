@@ -20,6 +20,18 @@
         defaults: {
             rows: {value: 60, required: true},
             columns: {value: 120, required: true},
+            startupCommand: {value: "cd $HOME/.node-red"},
+            cursorStyle: {value: "bar"},
+            fastScrollModifier: {value: "alt"},
+            scrollSensitivity: {value: 1},
+            fastScrollSensitivity: {value: 1},
+            scrollback: {value: 1000},
+            backgroundColor: {value: "#000000"},
+            foregroundColor: {value: "#ffffff"},
+            fontSize: {value: 12},
+            cursorBlink: {value: true},
+            drawBoldTextInBrightColors: {value: true},
+            
             name: {value: ''}
         },
         inputs:1,
@@ -49,7 +61,7 @@
                 var base64Data = btoa(data);
                 $.ajax( {url: "xterm_shell/" + node.id + "/" + terminalId + "/write/" + base64Data} );
             }
-            
+                
             // Multiple flow editors can be open simultaneously, which means multiple terminals can be open simultaneously.
             // All of these terminals need to work completely independent from each: we don't want the data from these terminals
             // to become mixed!  Therefore we will generate a 
@@ -59,14 +71,25 @@
             $.ajax( {url: "xterm_shell/" + node.id + "/" + node.terminalId + "/start/undefined"} );
 
             $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/undefined/css/xterm.css" type="text/css" />');
-            
+       
             // TODO: andere settings ook instelbaar maken op de config screen
             var terminalOptions = {
                 rows: node.rows,
                 cols: node.columns,
+                cursorStyle: node.cursorStyle,
+                fastScrollModifier: node.fastScrollModifier,
+                scrollback: node.scrollback,
+                scrollSensitivity: node.scrollSensitivity,
+                fastScrollSensitivity: node.fastScrollSensitivity,
+                fontSize: node.fontSize,
+                cursorBlink: node.cursorBlink,
+                drawBoldTextInBrightColors: node.drawBoldTextInBrightColors,
+                theme: {
+                    background: node.backgroundColor,
+                    foreground: node.foregroundColor
+                },
                 useStyle: true,
                 screenKeys: true,
-                cursorBlink: true,
                 fontFamily: 'Courier New'
             };
             
@@ -115,14 +138,38 @@
                 node.terminal.clear();      
             });
             
-            // TODO auto focus doesn't work ...
-            node.terminal.textarea.focus();
+            // Show tabsheets
+            node.tabs = RED.tabs.create({
+                id: "node-xterm-tabs",
+                onchange: function(tab) {
+                    // Show only the content (i.e. the children) of the selected tabsheet, and hide the others
+                    $("#node-xterm-tabs-content").children().hide();
+                    $("#" + tab.id).show();
+                    
+                    if (tab.id === "node-xterm-tab-terminal") {
+                        // TODO auto focus doesn't work ...
+                        node.terminal.focus();
+                    }
+                }
+            });
+            
+            node.tabs.addTab({
+                id: "node-xterm-tab-terminal",
+                label: "Terminal"
+            });
+            
+            node.tabs.addTab({
+                id: "node-xterm-tab-settings",
+                label: "Settings"
+            });
         },
         oneditsave: function() {
             var node = this;
             
-            // Stop the xterm terminal on the client side (remark 'destroy' has been removed...)
-            node.terminal.dispose(); 
+            if (node.terminal) {
+                // Stop the xterm terminal on the client side (remark 'destroy' has been removed...)
+                node.terminal.dispose(); 
+            }
             
             // Stop the pty process on the server side
             $.ajax( {url: "xterm_shell/" + node.id + "/" + node.terminalId +"/stop/undefined" } );
@@ -134,8 +181,10 @@
         oneditcancel: function() {
             var node = this;
             
-            // Stop the xterm terminal on the client side (remark 'destroy' has been removed...)
-            node.terminal.dispose();
+            if (node.terminal) {
+                // Stop the xterm terminal on the client side (remark 'destroy' has been removed...)
+                node.terminal.dispose();
+            }
             
             // Stop the pty process on the server side
             $.ajax( {url: "xterm_shell/" + node.id + "/" + node.terminalId + "/stop/undefined" } );
@@ -152,18 +201,86 @@
         <label for="node-input-name"><i class="icon-tag"></i> Name</label>
         <input type="text" id="node-input-name" placeholder="Name">
     </div>
-    <div class="form-row">
-        <label for="node-input-startupCommand"><i class="icon-tag"></i> Start command</label>
-        <input type="text" id="node-input-startupCommand" placeholder="cd $HOME/.node-red">
-    </div>
     <br>
     <div class="form-row">
-        <button id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
-            <i class="fa fa-code"></i>    
-        </button>
+        <!-- Tabsheets -->
+        <ul style="background: #fff; min-width: 600px; margin-bottom: 20px;" id="node-xterm-tabs"></ul>
     </div>
-    <div class="form-row">
-        <div id="terminalContainer" style="display: inline-block; font-family: "DejaVu Sans Mono", "Liberation Mono", monospace; font-size: 12px; color: rgb(240, 240, 240); background: #383734 !important; padding: 3px; border: none !important;"></div>
+    <div id="node-xterm-tabs-content" style="min-height: 150px">
+        <!-- Content of all tabsheets -->
+        <div id="node-xterm-tab-terminal" class="node-xterm-tab-terminal" style="position: relative; margin-top: 30px;">           
+            <div class="form-row">
+                <button id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
+                    <i class="fa fa-code"></i>    
+                </button>
+            </div>
+            <div class="form-row">
+                <div id="terminalContainer" style="display: inline-block; font-family: 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-size: 12px; color: rgb(240, 240, 240); background: #383734 !important; padding: 3px; border: none !important;"></div>
+            </div>
+        </div>
+        <div id="node-xterm-tab-settings" class="node-xterm-tab-settings" style="position: relative; margin-top: 30px;">           
+            <div class="form-row">
+                <label for="node-input-startupCommand"><i class="icon-tag"></i> Start command</label>
+                <input type="text" id="node-input-startupCommand" placeholder="cd $HOME/.node-red">
+            </div>
+            <div class="form-row">
+                <label for="node-input-rows"><i class="fa fa-arrows-alt"></i> Grid</label>
+                <span for="node-input-rows">Rows</span>
+                <input type="text" id="node-input-rows" style="width:80px" min="1">
+                <span for="node-input-columns" style="margin-left:20px;"> Columns</span>
+                <input type="text" id="node-input-columns" style="width:80px" min="1">
+            </div>
+            <div class="form-row">
+                <label for="node-input-cursorStyle"><i class="fa fa-terminal"></i> Cursor style</label>
+                <select id="node-input-cursorStyle">
+                    <option value="block">Block</option> 
+                    <option value="underline">Underline</option>
+                    <option value="bar">Bar</option>
+                </select>
+            </div>
+            <div class="form-row">
+                <label for="node-input-fastScrollModifier"><i class="fa fa-keyboard-o"></i> Fast scroll</label>
+                <select id="node-input-fastScrollModifier">
+                    <option value="alt">Alt</option> 
+                    <option value="ctrl">Ctrl</option>
+                    <option value="shift">Shift</option>
+                    <option value="undefined">Undefined</option>
+                </select>
+            </div>            
+            <div class="form-row">
+                <label for="node-input-scrollback"><i class="fa fa-arrows-v"></i> Scrollback</label>
+                <input type="text" id="node-input-scrollback" min="0">
+            </div>
+            <div class="form-row">
+                <label for="node-input-backgroundColor"><i class="fa fa-paint-brush"></i> Background</span></label>
+                <input type="color" id="node-input-backgroundColor"/>
+            </div>
+            <div class="form-row">
+                <label for="node-input-foregroundColor"><i class="fa fa-paint-brush"></i> Foreground</span></label>
+                <input type="color" id="node-input-foregroundColor"/>
+            </div>
+            <div class="form-row">
+                <label for="node-input-scrollSensitivity"><i class="fa fa-tachometer"></i> Scroll</label>
+                <input type="text" id="node-input-scrollSensitivity" min="1" max="10">
+            </div>
+            <div class="form-row">
+                <!-- See https://github.com/xtermjs/xterm.js/pull/2375 -->
+                <label for="node-input-fastScrollSensitivity"><i class="fa fa-tachometer"></i> Fast scroll</label>
+                <input type="text" id="node-input-fastScrollSensitivity" min="1" max="10">
+            </div>
+            <div class="form-row">
+                <label for="node-input-fontSize"><i class="fa fa-tachometer"></i> Font size</label>
+                <input type="text" id="node-input-fontSize" min="1" max="20">
+            </div>
+            <div class="form-row">
+                <input type="checkbox" id="node-input-cursorBlink" style="display: inline-block; width: auto; vertical-align: top;">
+                <label for="node-input-cursorBlink" style="width:70%;"> Blinking cursor</label>
+            </div>          
+            <div class="form-row">
+                <input type="checkbox" id="node-input-drawBoldTextInBrightColors" style="display: inline-block; width: auto; vertical-align: top;">
+                <label for="node-input-drawBoldTextInBrightColors" style="width:70%;"> Draw bold text in bright colors</label>
+            </div>   
+        </div>
     </div>
 </script>
 <script type="text/html" data-help-name="xterm_shell">
