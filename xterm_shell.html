@@ -15,8 +15,8 @@
 
 <script type="text/javascript">  
     RED.nodes.registerType('xterm_shell',{
-        category: 'network', // TODO
-        color: 'rgb( 63, 173, 181)',
+        category: 'system',
+        color: 'rgb(138, 130, 110)',
         defaults: {
             rows: {value: 60, required: true},
             columns: {value: 120, required: true},
@@ -24,11 +24,11 @@
         },
         inputs:1,
         outputs:0,
-        icon: "push.png",
+        icon: "font-awesome/fa-terminal",
         align: 'left',
-        paletteLabel: "xterm shell",
+        paletteLabel: "Terminal",
         label: function() {
-            return this.name || "xterm shell";
+            return this.name || "Terminal";
         },
         oneditprepare: function() {
             var node = this;
