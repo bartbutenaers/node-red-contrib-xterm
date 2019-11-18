@@ -31,7 +31,7 @@
             fontSize: {value: 12},
             cursorBlink: {value: true},
             drawBoldTextInBrightColors: {value: true},
-            
+            enableDataLogging: {value: false},
             name: {value: ''}
         },
         inputs:1,
@@ -57,6 +57,11 @@
             }
             
             function sendDataToServer(terminalId, data) {
+                if (node.enableDataLogging) {
+                    var dataType = Object.prototype.toString.call(data);
+                    console.log("Terminal data to server (type = " + dataType + "): " + data);
+                }
+                
                 // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
                 var base64Data = btoa(data);
                 $.ajax( {url: "xterm_shell/" + node.id + "/" + terminalId + "/write/" + base64Data} );
@@ -112,6 +117,11 @@
                 
                 // Only show data that is intended for this terminal
                 if (data.nodeId === node.id && data.terminalId === node.terminalId) { 
+                    if (node.enableDataLogging) {
+                        var dataType = Object.prototype.toString.call(data.data);
+                        console.log("Terminal data from server (type = " + dataType + "): " + data);
+                    }
+                
                     // Convert the base64 encoded string back to a string
                     var decodedString = atob(data.data);
                         
@@ -282,6 +292,10 @@
                 <input type="checkbox" id="node-input-drawBoldTextInBrightColors" style="display: inline-block; width: auto; vertical-align: top;">
                 <label for="node-input-drawBoldTextInBrightColors" style="width:70%;"> Draw bold text in bright colors</label>
             </div>   
+            <div class="form-row">
+                <input type="checkbox" id="node-input-enableDataLogging" style="display: inline-block; width: auto; vertical-align: top;">
+                <label for="node-input-enableDataLogging" style="width:70%;"> Enable data logging (for troubleshooting)</label>
+            </div>               
         </div>
     </div>
 </script>
@@ -308,5 +322,7 @@
     <p><strong>Blinking cursor :</strong><br/>
     Whether the cursor should be blinking or not.</p>     
     <p><strong>Draw bold text in bright colors:</strong><br/>
-    Whether to draw bold text in bright colors.</p>                           
+    Whether to draw bold text in bright colors.</p>  
+    <p><strong>Enable data logging:</strong><br/>
+    Enable logging of all the data being send (both on client and server side), to simplify troubleshooting in case of problems.</p>     
 </script>
