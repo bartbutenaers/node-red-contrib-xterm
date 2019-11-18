@@ -58,6 +58,7 @@ module.exports = function(RED) {
         var node = this;
         node.rows = config.rows;
         node.columns = config.columns;
+        node.enableDataLogging = config.enableDataLogging;
         node.useBinaryTransport = os.platform() !== "win32";
         node.ptyProcesses = new Map();
         
@@ -91,8 +92,12 @@ module.exports = function(RED) {
         
                 ptyProcess.on('data', function(data) {
                     try {
-                        console.log("data send via websocket to client");
                         //TODO send data in output message ???? node.send(data);
+                        
+                        if (node.enableDataLogging) {
+                            var dataType = Object.prototype.toString.call(data);
+                            console.log("Terminal data to client (type = " + dataType + "): " + data);
+                        }
                         
                         // Convert the terminal data to base64, before sending it to the client
                         var buff = new Buffer(data);
@@ -103,8 +108,6 @@ module.exports = function(RED) {
                         // The WebSocket is not open, ignore
                     }
                 });
-                
-                console.log("Pty process started");
             }
             catch (err) {
                 node.error(err);
@@ -116,6 +119,11 @@ module.exports = function(RED) {
             try {
                 var ptyProcess = node.ptyProcesses.get(terminalId);
                 ptyProcess.write(data);
+                
+                if (node.enableDataLogging) {
+                    var dataType = Object.prototype.toString.call(data);
+                    console.log("Terminal data from client (type = " + dataType + "): " + data);
+                }
             }
             catch (err) {
                 node.error(err);
@@ -133,8 +141,6 @@ module.exports = function(RED) {
             try {
                 ptyProcess.kill();
                 node.ptyProcesses.delete(terminalId);
-                
-                console.log("Pty process stopped");
             }
             catch (err) {
                 node.error(err);
