@@ -71,7 +71,7 @@
             $.ajax( {url: "xterm_shell/" + node.id + "/" + node.terminalId + "/start/undefined"} );
 
             $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/undefined/css/xterm.css" type="text/css" />');
-       
+  
             // TODO: andere settings ook instelbaar maken op de config screen
             var terminalOptions = {
                 rows: node.rows,
@@ -219,6 +219,8 @@
             </div>
         </div>
         <div id="node-xterm-tab-settings" class="node-xterm-tab-settings" style="position: relative; margin-top: 30px;">           
+            <div class="form-tips" id="node-tip"><span style="color:red;font-weight:bold">Updated settings will become active after deploy!</span></div>
+            <br>
             <div class="form-row">
                 <label for="node-input-startupCommand"><i class="icon-tag"></i> Start command</label>
                 <input type="text" id="node-input-startupCommand" placeholder="cd $HOME/.node-red">
@@ -239,7 +241,7 @@
                 </select>
             </div>
             <div class="form-row">
-                <label for="node-input-fastScrollModifier"><i class="fa fa-keyboard-o"></i> Fast scroll</label>
+                <label for="node-input-fastScrollModifier"><i class="fa fa-keyboard-o"></i> Fast scroll key</label>
                 <select id="node-input-fastScrollModifier">
                     <option value="alt">Alt</option> 
                     <option value="ctrl">Ctrl</option>
@@ -285,4 +287,26 @@
 </script>
 <script type="text/html" data-help-name="xterm_shell">
     <p>A Node Red node to offer a shell, which allows to execute command line instructions in the operating system.</p>
+    <p><strong>Start command:</strong><br/>
+    Command that need to be executed automatically when the terminal is started.</p>
+    <p><strong>Grid:</strong><br/>
+    The number of rows and columns that need to be displayed inside the terminal.  Both characteristcs are specified in number of characters.</p>
+    <p><strong>Cursor style:</strong><br/>
+    Specifies how the cursor should be displayed.</p>    
+    <p><strong>Fast scroll key:</strong><br/>
+    The modifier key hold to multiply scroll speed.</p>                 
+    <p><strong>Scrollback:</strong><br/>
+    The number of rows that are retained when lines are scrolled beyond the initial viewport.</p>               
+    <p><strong>Background:</strong><br/>
+    The background color of the terminal window.</p>             
+    <p><strong>Foreground:</strong><br/>
+    The foreground color of the text on the terminal window.</p>              
+    <p><strong>Scroll:</strong><br/>
+    The scroll speed multiplier used for scrolling..</p>                         
+    <p><strong>Fast scroll:</strong><br/>
+    The scroll speed multiplier used for fast scrolling..</p>                   
+    <p><strong>Blinking cursor :</strong><br/>
+    Whether the cursor should be blinking or not.</p>     
+    <p><strong>Draw bold text in bright colors:</strong><br/>
+    Whether to draw bold text in bright colors.</p>                           
 </script>
