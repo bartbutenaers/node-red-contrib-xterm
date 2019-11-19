@@ -126,6 +126,16 @@
                     var decodedString = atob(data.data);
                         
                     node.terminal.write(decodedString);
+                    
+                    // Handle the startup command once, after the first prompt has been received (to make sure everything arrives in the correct sequence)
+                    if (!node.isStartupHandled) {
+                        node.isStartupHandled = true;
+                    
+                        if (node.startupCommand &&  node.startupCommand!== "") {
+                            // Pass an enter (\n) after the startup command to execute it immediately
+                            sendDataToServer(node.terminalId, node.startupCommand + "\n");
+                        }
+                    }
                 }
             }
             
@@ -140,10 +150,6 @@
             //node.terminal.write('\r\n*** |_| \_|\___/ \__,_|\___|     |_| \_\_____|____/  ***');
             //node.terminal.write('\r\n'); 
    
-            if (node.startupCommand &&  node.startupCommand!== "") {
-                sendDataToServer(node.terminalId, node.startupCommand);
-            }
-            
             $("#node-clear-terminal").on("click", function (e) {
                 node.terminal.clear();      
             });
