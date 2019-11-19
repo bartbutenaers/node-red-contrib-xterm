@@ -12,7 +12,7 @@ Normally you should have only ***one instance*** of this node in your flow, sinc
 
 As soon as the config screen is being opened, you can start entering commands in the terminal window (which is connected to your Node-RED backend server):
 
-![xterm_linux_demo](https://user-images.githubusercontent.com/14224149/68810110-aa80ef80-066d-11ea-9e71-8692309d9f60.gif)
+![xterm linux_demo](https://user-images.githubusercontent.com/14224149/69189320-7189c480-0b1e-11ea-90c2-5905aef27c7a.gif)
 
 Remark: it should be possible to use this terminal for macOS, Linux and Windows.
 Although I only have been able to test it on Linux...
