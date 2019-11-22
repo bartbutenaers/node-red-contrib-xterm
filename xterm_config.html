@@ -1,0 +1,138 @@
+<!--
+  Copyright 2019, Bart Butenaers
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<script type="text/javascript">
+    RED.nodes.registerType('xterm-configuration', {
+        category: 'config',
+        defaults: {
+            rows: {value: 60, required: true},
+            columns: {value: 120, required: true},
+            startupCommand: {value: "cd $HOME/.node-red"},
+            cursorStyle: {value: "bar"},
+            fastScrollModifier: {value: "alt"},
+            scrollSensitivity: {value: 1},
+            fastScrollSensitivity: {value: 1},
+            scrollback: {value: 1000},
+            backgroundColor: {value: "#000000"},
+            foregroundColor: {value: "#ffffff"},
+            fontSize: {value: 12},
+            cursorBlink: {value: true},
+            drawBoldTextInBrightColors: {value: true},
+            enableDataLogging: {value: false},
+            name: { value: "" }
+        },
+        label: function () {
+            return this.name;
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="xterm-configuration">
+    <div class="form-row">
+        <label for="node-config-input-startupCommand"><i class="icon-tag"></i> Start command</label>
+        <input type="text" id="node-config-input-startupCommand" placeholder="cd $HOME/.node-red">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-rows"><i class="fa fa-arrows-alt"></i> Grid</label>
+        <span for="node-config-input-rows">Rows</span>
+        <input type="text" id="node-config-input-rows" style="width:80px" min="1">
+        <span for="node-config-input-columns" style="margin-left:20px;"> Columns</span>
+        <input type="text" id="node-config-input-columns" style="width:80px" min="1">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-cursorStyle"><i class="fa fa-terminal"></i> Cursor style</label>
+        <select id="node-config-input-cursorStyle">
+            <option value="block">Block</option> 
+            <option value="underline">Underline</option>
+            <option value="bar">Bar</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-fastScrollModifier"><i class="fa fa-keyboard-o"></i> Fast scroll key</label>
+        <select id="node-config-input-fastScrollModifier">
+            <option value="alt">Alt</option> 
+            <option value="ctrl">Ctrl</option>
+            <option value="shift">Shift</option>
+            <option value="undefined">Undefined</option>
+        </select>
+    </div>            
+    <div class="form-row">
+        <label for="node-config-input-scrollback"><i class="fa fa-arrows-v"></i> Scrollback</label>
+        <input type="text" id="node-config-input-scrollback" min="0">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-backgroundColor"><i class="fa fa-paint-brush"></i> Background</span></label>
+        <input type="color" id="node-config-input-backgroundColor"/>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-foregroundColor"><i class="fa fa-paint-brush"></i> Foreground</span></label>
+        <input type="color" id="node-config-input-foregroundColor"/>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-scrollSensitivity"><i class="fa fa-tachometer"></i> Scroll</label>
+        <input type="text" id="node-config-input-scrollSensitivity" min="1" max="10">
+    </div>
+    <div class="form-row">
+        <!-- See https://github.com/xtermjs/xterm.js/pull/2375 -->
+        <label for="node-config-input-fastScrollSensitivity"><i class="fa fa-tachometer"></i> Fast scroll</label>
+        <input type="text" id="node-config-input-fastScrollSensitivity" min="1" max="10">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-fontSize"><i class="fa fa-tachometer"></i> Font size</label>
+        <input type="text" id="node-config-input-fontSize" min="1" max="20">
+    </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-config-input-cursorBlink" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-cursorBlink" style="width:70%;"> Blinking cursor</label>
+    </div>          
+    <div class="form-row">
+        <input type="checkbox" id="node-config-input-drawBoldTextInBrightColors" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-drawBoldTextInBrightColors" style="width:70%;"> Draw bold text in bright colors</label>
+    </div>   
+    <div class="form-row">
+        <input type="checkbox" id="node-config-input-enableDataLogging" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-enableDataLogging" style="width:70%;"> Enable data logging (for troubleshooting)</label>
+    </div>               
+    </br>
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" placeholder="Name">
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="xterm-configuration">
+    <p>Configuration for an Xterm terminal screen.</p>
+    <p><strong>Start command:</strong><br/>
+    Command that need to be executed automatically when the terminal is started.</p>
+    <p><strong>Grid:</strong><br/>
+    The number of rows and columns that need to be displayed inside the terminal.  Both characteristcs are specified in number of characters.</p>
+    <p><strong>Cursor style:</strong><br/>
+    Specifies how the cursor should be displayed.</p>    
+    <p><strong>Fast scroll key:</strong><br/>
+    The modifier key hold to multiply scroll speed.</p>                 
+    <p><strong>Scrollback:</strong><br/>
+    The number of rows that are retained when lines are scrolled beyond the initial viewport.</p>               
+    <p><strong>Background:</strong><br/>
+    The background color of the terminal window.</p>             
+    <p><strong>Foreground:</strong><br/>
+    The foreground color of the text on the terminal window.</p>              
+    <p><strong>Scroll:</strong><br/>
+    The scroll speed multiplier used for scrolling..</p>                         
+    <p><strong>Fast scroll:</strong><br/>
+    The scroll speed multiplier used for fast scrolling..</p>                   
+    <p><strong>Blinking cursor :</strong><br/>
+    Whether the cursor should be blinking or not.</p>     
+    <p><strong>Draw bold text in bright colors:</strong><br/>
+    Whether to draw bold text in bright colors.</p>  
+    <p><strong>Enable data logging:</strong><br/>
+    Enable logging of all the data being send (both on client and server side), to simplify troubleshooting in case of problems.</p>     
+</script>
