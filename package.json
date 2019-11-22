@@ -22,7 +22,10 @@
     },
     "node-red"     : {
         "nodes": {
-            "xterm_shell": "xterm_shell.js"
+            "xterm_config": "xterm_config.js",
+            "xterm_in": "xterm_in.js",
+            "xterm_out": "xterm_out.js",
+            "xterm_sidebar": "xterm_sidebar.js"
         }
     }
 }
