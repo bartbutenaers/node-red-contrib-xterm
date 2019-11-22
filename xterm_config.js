@@ -33,5 +33,5 @@
         this.enableDataLogging = config.enableDataLogging;
     }
     
-    RED.nodes.registerType('xterm-configuration', XtermConfigurationNode)
+    RED.nodes.registerType('xterm_config', XtermConfigurationNode)
 }
