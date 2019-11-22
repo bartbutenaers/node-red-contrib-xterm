@@ -11,7 +11,7 @@
   limitations under the License.
 -->
 <script type="text/javascript">
-    RED.nodes.registerType('xterm-configuration', {
+    RED.nodes.registerType('xterm_config', {
         category: 'config',
         defaults: {
             rows: {value: 60, required: true},
@@ -36,7 +36,7 @@
     });
 </script>
 
-<script type="text/x-red" data-template-name="xterm-configuration">
+<script type="text/x-red" data-template-name="xterm_config">
     <div class="form-row">
         <label for="node-config-input-startupCommand"><i class="icon-tag"></i> Start command</label>
         <input type="text" id="node-config-input-startupCommand" placeholder="cd $HOME/.node-red">
@@ -109,7 +109,7 @@
     </div>
 </script>
 
-<script type="text/x-red" data-help-name="xterm-configuration">
+<script type="text/x-red" data-help-name="xterm_config">
     <p>Configuration for an Xterm terminal screen.</p>
     <p><strong>Start command:</strong><br/>
     Command that need to be executed automatically when the terminal is started.</p>
