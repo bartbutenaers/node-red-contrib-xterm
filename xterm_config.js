@@ -212,10 +212,7 @@
                         break;   
 					case "xterm.css":
 						filePath = xtermCssPath;
-						break;
-					case "sidebar.html":
-						filePath = path.join(__dirname, req.params.info);
-						break;						
+						break;				
                     default:
 						break;
 				}
