@@ -57,6 +57,9 @@
 	// Indeed the user might remove that configuration node behind our back, so we would loose all current pseudo terminal processes.
 	var xtermProcessInfoMap = new Map();
 	
+	// Cache the reference to the xterm config node, so we don't need to search it every time
+	var xtermShellNode = null;
+	
 	// Start or restart the timer of a terminal id
 	function startTimer(terminalId, loggingEnabled) {
 		var processInfo = xtermProcessInfoMap.get(terminalId);
@@ -176,20 +179,12 @@
         this.rows = config.rows;
         this.columns = config.columns;
 		
-		var node = this;
+		// Cache the reference to this node
+		xtermShellNode = this;
 
-        node.on("close", function() {
-            //TODO socket.emit('data', '\r\n*** SSH CONNECTION CLOSED ***\r\n');
-            
-			/* TODO
-            var terminalIds = Array.from(node.ptyProcesses.keys());
-            
-            // Stop all the spawned pty processes
-            for (var i = 0; i < terminalIds.length; i++) {
-                var terminalId = terminalIds[i];
-                node.stopTerminal(terminalId);
-            }
-			*/ 
+        this.on("close", function() {
+            // Remove the reference to this node
+			xtermShellNode = null;
             
             if (done) {
                 done();
@@ -201,64 +196,41 @@
 
 	// Process the requests from the flow editor
     RED.httpAdmin.get('/xterm_shell/:terminal_id/:command/:info', function(req, res) {
-        var xtermShellNode;
-        
-        if (req.params.command !== "js" && req.params.command !== "css" && req.params.command !== "html") {
-			if (req.params.node_id !== "undefined") {
-				// Try to find the xterm config node, based on it's id.
-				// Could be that it hasn't been deployed yet ...
-				xtermShellNode = RED.nodes.getNode(req.params.node_id);
-			}
-        }
-		
 		// When a config node is available on the server side, we see whether logging should be enabled
 		var loggingEnabled = xtermShellNode && xtermShellNode.loggingEnabled;
 
         switch (req.params.command) {
-            case "js":
+            case "static":
+				var filePath;
+				
                 switch (req.params.info) {
                     case "xterm.js":
-                        if (xtermJsPath) {
-                            // Send the requested .js file to the client (info contains .js file name)
-                            res.sendFile(xtermJsPath);
-                        }
-                        else {
-                            res.status(404).json('Javascript terminal library is not available');
-                        }
+						filePath = xtermJsPath;
                         break;
                     case "xterm-addon-fit.js":
-                        if (xtermFitJsPath) {
-                            // Send the requested .js file to the client (info contains .js file name)
-                            res.sendFile(xtermFitJsPath);
-                        }
-                        else {
-                            res.status(404).json('Javascript terminal fit addon is not available');
-                        }
-                        break;    
+						filePath = xtermFitJsPath;
+                        break;   
+					case "xterm.css":
+						filePath = xtermCssPath;
+						break;
+					case "sidebar.html":
+						filePath = path.join(__dirname, req.params.info);
+						break;						
                     default:
-                        // Don't log because xterm also tries to load some mapping files, which are required to
-                        // do source mapping from Javascript to the original Typescript code.  But we don't need that.
-                        //console.log("Unknown javascript file '" + req.params.info + "'");
-                        res.status(404).json('Unknown javascript file');                        
+						break;
+				}
+				
+				if (filePath) {
+					// Send the requested static file to the client
+                    res.sendFile(filePath);
+				}
+				else {
+					// Don't log because xterm also tries to load some mapping files, which are required to
+					// do source mapping from Javascript to the original Typescript code.  But we don't need that.
+					//console.log("Unknown javascript file '" + req.params.info + "'");
+					res.status(404).json('Unknown static file ' + filePath);                        
                 }
-                break;
-            case "css":
-                if (xtermCssPath) {
-                    // Send the requested .css file to the client (info contains .css file name)
-                    res.sendFile(xtermCssPath);
-                }
-                else {
-                    res.status(404).json('Css file does not exist');
-                }
-                break;
-			case "html":
-			    var options = {
-					root: __dirname,
-					dotfiles: 'deny'
-				};
-       
-				// Send the requested .html file to the client (info contains .html file name)
-				res.sendFile("sidebar.html", options)
+						
                 break;
             case "start":
 				// The request (info) will contain the default dimensions '<default_rows>;<default_columns>'.
@@ -296,8 +268,8 @@
                 res.status(200).json('success');
                 break;
             default:
-                console.log("Unknown category '" + category + "'");
-                res.status(404).json('Unknown category');
+                console.log("Unknown command '" + req.params.command + "'");
+                res.status(404).json('Unknown command');
         }
     });
 }
