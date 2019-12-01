@@ -120,7 +120,10 @@
 		// no config node has been deployed on the server yet...
 		var info = globalTerminalConfigNode.rows + ";" + globalTerminalConfigNode.columns;
 		// Start the pty pseudo terminal process on the server side
-		$.ajax( {url: "xterm_shell/" + globalTerminalId + "/start/" + info} );
+		$.ajax({
+			url: "xterm_shell/" + globalTerminalId + "/start/" + info,
+			timeout: 3000
+		});
 	}
 	
 	function stopTerminal() {
@@ -130,7 +133,10 @@
 		}
 		
 		// Stop the pty process on the server side
-		$.ajax( {url: "xterm_shell/" + globalTerminalId +"/stop/undefined" } );
+		$.ajax({
+			url: "xterm_shell/" + globalTerminalId +"/stop/undefined",
+			timeout: 3000
+		});
 		
 		if (globalServerDataHandler) {
 			RED.comms.unsubscribe('xterm_shell', globalServerDataHandler);
@@ -145,7 +151,10 @@
 		
 		// Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
 		var base64Data = btoa(data);
-		$.ajax( {url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data} );
+		$.ajax({
+			url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data,
+			timeout: 3000
+		});
 	}
 	
 	// Check whether the globalTerminalConfigNode (still) exists
@@ -209,89 +218,8 @@
 			RED.nodes.dirty(true);
 		}
 		
-		var content = $("<div/>",{
-			id:"tab-terminal-xterm", style:"position: relative; padding: 0px 4px; height:calc(100% - 48px); overflow: hidden"
-		});
-	
-		// Load the sidebar html file
-		// See https://stackoverflow.com/questions/18938180/how-to-get-the-html-of-a-div-on-another-page-with-jquery-ajax
-		$.ajax({
-			url: "xterm_shell/undefined/static/sidebar.html",
-			type:'GET',
-			success: function(data){
-				// Show the external html file as sidebar content
-				content.append(data);
-				// Once the container DIV element has been created, the terminal can be displayed as a child element
-				
-				$("#node-start-terminal").on("click", function (e) {
-					startTerminal();						
-				});
-				
-				$("#node-stop-terminal").on("click", function (e) {
-					stopTerminal();					
-				});
-				$("#node-clear-terminal").on("click", function (e) {
-					globalTerminal.clear();      
-				});					
-				
-				if (globalTabsheets === null) {
-					// Show tabsheets
-					globalTabsheets = RED.tabs.create({
-						id: "node-xterm-tabs",
-						onchange: function(tab) {
-							// Show only the content (i.e. the children) of the selected tabsheet, and hide the others
-							$("#node-xterm-tabs-content").children().hide();
-							$("#" + tab.id).show();
-							
-							if (tab.id === "node-xterm-tab-terminal") {
-								// TODO auto focus doesn't work ...
-		 // TODO                       globalTerminal.focus();
-							}
-						}
-					});
-					
-					globalTabsheets.addTab({
-						id: "node-xterm-tab-terminal",
-						label: "Terminal"
-					});
-					
-					globalTabsheets.addTab({
-						id: "node-xterm-tab-settings",
-						label: "Settings"
-					});
-					// For every setting input field, we will have to store the changed values into the config node
-					$(".xterm-setting").on("change", function() {
-						var propertyName = this.id.replace("node-config-input-", "");
-						var propertyValue = $(this).val();
-						
-						if (this.type === "checkbox") {
-							// For checkboxes we don't want to use the on/off values, but instead true/false
-							propertyValue = this.checked;
-						}
-			
-						// When the property value has changed, save it in the config node and activate the 'deploy' button.
-						// Remark: don't check the input type (i.e. use != instead of  !==) because we will get the number values as strings...
-						if (!globalTerminalConfigNode || globalTerminalConfigNode[propertyName] != propertyValue) {
-							setupSidebarTabsheet();
-							globalTerminalConfigNode[propertyName] = propertyValue;
-							RED.nodes.dirty(true);
-						}
-					})		
-					// At startup we should display all the config node properties into the corresponding input fields
-					$('.xterm-setting').each(function() {
-						var propertyName = $(this).get(0).id.replace("node-config-input-", "");
-						var propertyValue = globalTerminalConfigNode[propertyName];
-						
-						if ($(this)[0].type === "checkbox") {
-							$(this).attr("checked", propertyValue);
-						}
-						else {
-							$(this).val(propertyValue);
-						}
-					});	
-				}
-			}
-		});
+		// The html content of the sidebar page has been specified a a data-template, from where it can be loaded:
+		var content = $($('script[type="text/x-red"][data-template-name="xterm_config_sidebar"]').i18n().html());
 		
 		// Add a new "Terminal" tabsheet to the sidebar in the flow editor
 		RED.sidebar.addTab({
@@ -301,10 +229,83 @@
 			content: content,
 			closeable: true,
 			disableOnEdit: true,
-			iconClass: "fa fa-terminal",
-			onchange: function() { 
-			}
+			iconClass: "fa fa-terminal"
 		});
+		
+		// The html content of the config node-settings has been specified as a SECOND data-template.  We will show
+		// the same template both in the config node's config screen, and in the sidebar "Properties" tabsheet.
+		// This way we avoid the same html to be maintained twice.
+		$("#node-xterm-tab-settings").append($('script[type="text/x-red"][data-template-name="xterm_config"]').i18n().html());
+				
+		// Once the container DIV element has been created, the terminal can be displayed as a child element
+		
+		$("#node-start-terminal").on("click", function (e) {
+			startTerminal();						
+		});
+		
+		$("#node-stop-terminal").on("click", function (e) {
+			stopTerminal();					
+		});
+		$("#node-clear-terminal").on("click", function (e) {
+			globalTerminal.clear();      
+		});					
+		
+		if (globalTabsheets === null) {
+			// Show tabsheets
+			globalTabsheets = RED.tabs.create({
+				id: "node-xterm-tabs",
+				onchange: function(tab) {
+					// Show only the content (i.e. the children) of the selected tabsheet, and hide the others
+					$("#node-xterm-tabs-content").children().hide();
+					$("#" + tab.id).show();
+					
+					if (tab.id === "node-xterm-tab-terminal") {
+						// TODO auto focus doesn't work ...
+ // TODO                       globalTerminal.focus();
+					}
+				}
+			});
+			
+			globalTabsheets.addTab({
+				id: "node-xterm-tab-terminal",
+				label: "Terminal"
+			});
+			
+			globalTabsheets.addTab({
+				id: "node-xterm-tab-settings",
+				label: "Settings"
+			});
+			// For every setting input field, we will have to store the changed values into the config node
+			$(".xterm-setting").on("change", function() {
+				var propertyName = this.id.replace("node-config-input-", "");
+				var propertyValue = $(this).val();
+				
+				if (this.type === "checkbox") {
+					// For checkboxes we don't want to use the on/off values, but instead true/false
+					propertyValue = this.checked;
+				}
+	
+				// When the property value has changed, save it in the config node and activate the 'deploy' button.
+				// Remark: don't check the input type (i.e. use != instead of  !==) because we will get the number values as strings...
+				if (!globalTerminalConfigNode || globalTerminalConfigNode[propertyName] != propertyValue) {
+					setupSidebarTabsheet();
+					globalTerminalConfigNode[propertyName] = propertyValue;
+					RED.nodes.dirty(true);
+				}
+			})		
+			// At startup we should display all the config node properties into the corresponding input fields
+			$('.xterm-setting').each(function() {
+				var propertyName = $(this).get(0).id.replace("node-config-input-", "");
+				var propertyValue = globalTerminalConfigNode[propertyName];
+				
+				if ($(this)[0].type === "checkbox") {
+					$(this).attr("checked", propertyValue);
+				}
+				else {
+					$(this).val(propertyValue);
+				}
+			});	
+		}
 	}
 
     RED.nodes.registerType('xterm_config', {
@@ -342,7 +343,10 @@
 			// https://discourse.nodered.org/t/detect-when-flow-editor-is-closed/18357/3?u=bartbutenaers
 			// Therefore we will send a heartbeat every 5 seconds to the server.
 			node.timerId = setInterval(function() {
-				$.ajax( {url: "xterm_shell/" + globalTerminalId +"/heartbeat/undefined" } );
+				$.ajax({
+					url: "xterm_shell/" + globalTerminalId +"/heartbeat/undefined",
+					timeout: 3000				
+				});
 			}, 5000);
         }
     });
@@ -416,6 +420,41 @@
         <label for="node-config-input-name"><i class="icon-tag"></i> Name</label>
         <input type="text" id="node-config-input-name" placeholder="Name">
     </div>
+</script>
+
+<script type="text/x-red" data-template-name="xterm_config_sidebar">
+	<div id="tab-terminal-xterm" style="position: relative; padding: 0px 4px; height:calc(100% - 48px); overflow: hidden">
+		<div id="sidebar-xterm-content" style="position: relative; height: 100%; padding: 10px; ">
+			<form class="dialog-form">
+				<div class="form-row">
+					<!-- Tabsheets -->
+					<ul style="background: #fff; min-width: 600px; margin-bottom: 20px;" id="node-xterm-tabs"></ul>
+				</div>
+				<div id="node-xterm-tabs-content" style="min-height: 150px">
+					<!-- Content of all tabsheets -->
+					<div id="node-xterm-tab-terminal" class="node-xterm-tab-terminal" style="position: relative; margin-top: 30px;">           
+						<div class="form-row">
+							<button id="node-start-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Start terminal">
+								<i class="fa fa-play"></i>    
+							</button>
+							<button id="node-stop-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Stop terminal">
+								<i class="fa fa-stop"></i>    
+							</button>
+							<button id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
+								<i class="fa fa-trash"></i>    
+							</button>
+						</div>
+						<div class="form-row">
+							<div id="terminalContainer" style="width: 100%; height: 100%; display: inline-block; font-family: 'DejaVu Sans Mono', 'Liberation Mono', monospace; font-size: 12px; color: rgb(240, 240, 240); background: #383734 !important; padding: 3px; border: none !important;"></div>
+						</div>
+					</div>
+					<div id="node-xterm-tab-settings" class="node-xterm-tab-settings" style="position: relative; margin-top: 30px;">
+						<!-- The config node settings (from data-template-name="xterm_config") will be added here -->
+					</div>
+				</div>
+			</form>
+		</div>
+	</div>
 </script>
 
 <script type="text/x-red" data-help-name="xterm_config">
