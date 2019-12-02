@@ -16,8 +16,8 @@
         color: 'rgb(138, 130, 110)',
         defaults: {
             command: {value: ""},
-			addEnter: {value: true},
-			confirmation: {value: false},
+            addEnter: {value: true},
+            confirmation: {value: false},
             name: {value: ""}
         },
         inputs: 0,
@@ -28,7 +28,7 @@
         label: function() {
             return this.name || "Terminal input";
         },
-		button: {
+        button: {
             /*enabled: function() {
                 return !this.changed
             },*/
@@ -38,28 +38,28 @@
                 }
                 
                 var node = this;
-				
-				if (node.confirmation) {
-					var answer = confirm("Execute this command in the terminal?");
-					if (answer === false) {
-						// Don't execute the command
-						return;
-					}
-				}
-				
-				var command = node.command;
+                
+                if (node.confirmation) {
+                    var answer = confirm("Execute this command in the terminal?");
+                    if (answer === false) {
+                        // Don't execute the command
+                        return;
+                    }
+                }
+                
+                var command = node.command;
 
-				if (node.addEnter) {
-					command += "\n";
-				}
-				
-				// Ask the http endpoint to inject the command into the terminal.  Since we only arrive here when the command hasn't been
-				// changed, we can inject the command itself here (since it has the same command value as the deployed node on the server).	
-				var base64Data = btoa(command);
-				
+                if (node.addEnter) {
+                    command += "\n";
+                }
+                
+                // Ask the http endpoint to inject the command into the terminal.  Since we only arrive here when the command hasn't been
+                // changed, we can inject the command itself here (since it has the same command value as the deployed node on the server).    
+                var base64Data = btoa(command);
+                
                 $.ajax({
-					// Use the xtermTerminalId, which is a global variable set by the sidebar panel (see xterm_config.js).
-                    url: "xterm_shell/" + xtermTerminalId + "/write/" + base64Data/*,
+                    // Use the globalTerminalId, which is a global variable set by the sidebar panel (see xterm_config.js).
+                    url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data/*,
                     success: function(resp) {
                         //RED.notify(node._("inject.success",{label:label}),{type:"success",id:"inject"});
                     },
@@ -89,7 +89,7 @@
         <input type="checkbox" id="node-input-addEnter" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-addEnter" style="width:70%;"> Add 'enter' automatically</label>
     </div>
-	<div class="form-row">
+    <div class="form-row">
         <input type="checkbox" id="node-input-confirmation" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-confirmation" style="width:70%;"> Show confirmation popup</label>
     </div> 
