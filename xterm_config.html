@@ -40,6 +40,7 @@
         
         // Ensure that the globalTerminalConfigNode (still) exists.
         // Caution: this function cannot be called from onpaletteadd, because then the RED.nodes are not filled yet!!!
+        // !!!!!!!!!!!!!!! CALL THIS FUNCTION EVERYWHERE THE globalTerminalConfigNode IS BEING USED !!!!!!!!!!!!!!!
         function ensureXtermConfigNode() {
             // If we had find it previously, check if it has been deleted beneath us
             if (globalTerminalConfigNode !== null) {
@@ -140,7 +141,7 @@
             onpaletteadd: function () {
                 // Add the xterm.js CSS stylesheet to the page head section
                 $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/static/xterm.css" type="text/css" />');
-                    
+ debugger;                   
                 // The html content of the sidebar page has been specified a a data-template, from where it can be loaded:
                 var content = $($('script[type="text/x-red"][data-template-name="xterm_config_sidebar"]').i18n().html());
                 
@@ -295,6 +296,24 @@
                             // Show only the content (i.e. the children) of the selected tabsheet, and hide the others
                             $("#node-xterm-tabs-content").children().hide();
                             $("#" + tab.id).show();
+                            
+                            if (tab.id === "node-xterm-tab-settings") {
+                                ensureXtermConfigNode();
+                                
+                                // When navigating to the settings tabsheet, all the config node properties need to be displayed
+                                // into the corresponding input fields
+                                $('.xterm-setting').each(function() {
+                                    var propertyName = $(this).get(0).id.replace("node-config-input-", "");
+                                    var propertyValue = globalTerminalConfigNode[propertyName];
+                                    
+                                    if ($(this)[0].type === "checkbox") {
+                                        $(this).attr("checked", propertyValue);
+                                    }
+                                    else {
+                                        $(this).val(propertyValue);
+                                    }
+                                });
+                            }
                         }
                     });
                     
@@ -307,8 +326,11 @@
                         id: "node-xterm-tab-settings",
                         label: "Settings"
                     });
+                    
                     // For every setting input field, we will have to store the changed values into the config node
                     $(".xterm-setting").on("change", function() {
+                        ensureXtermConfigNode();
+                    
                         var propertyName = this.id.replace("node-config-input-", "");
                         var propertyValue = $(this).val();
                         
@@ -324,19 +346,7 @@
                             globalTerminalConfigNode[propertyName] = propertyValue;
                             RED.nodes.dirty(true);
                         }
-                    })        
-                    // At startup we should display all the config node properties into the corresponding input fields
-                    $('.xterm-setting').each(function() {
-                        var propertyName = $(this).get(0).id.replace("node-config-input-", "");
-                        var propertyValue = globalTerminalConfigNode[propertyName];
-                        
-                        if ($(this)[0].type === "checkbox") {
-                            $(this).attr("checked", propertyValue);
-                        }
-                        else {
-                            $(this).val(propertyValue);
-                        }
-                    });    
+                    })            
                 }
 
                 /*RED.events.on("deploy", deployEventHandler);
@@ -373,7 +383,7 @@
     <div class="form-row">
         <label for="node-config-input-rows"><i class="fa fa-arrows-alt"></i> Grid</label>
         <span for="node-config-input-rows">Rows</span>
-        <input type="text" id="node-config-input-rows" style="width:80px" min="1">
+        <input type="text" id="node-config-input-rows" style="width:80px" min="1" class="xterm-setting">
         <span for="node-config-input-columns" style="margin-left:20px;"> Columns</span>
         <input type="text" id="node-config-input-columns" style="width:80px" min="1" class="xterm-setting">
     </div>
