@@ -94,7 +94,8 @@
                     cursorBlink: true,
                     drawBoldTextInBrightColors: true,
                     loggingEnabled: false,
-                    name: ""
+                    name: "XTerminal",
+                    label: function() { return this.name || "XTerminal"}
                 }
                 
                 // Add the new config node to the collection of Node-RED nodes
@@ -123,8 +124,9 @@
                 cursorBlink: {value: true},
                 drawBoldTextInBrightColors: {value: true},
                 loggingEnabled: {value: false},
-                name: { value: "" }
+                name: { value: "XTerminal" }
             },
+            paletteLabel: 'XTerminal',
             label: function () {
                 return this.name;
             },
@@ -364,15 +366,20 @@
 
 <script type="text/x-red" data-template-name="xterm_config">
     <div class="form-row">
+        <label for="node-config-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" class="xterm-setting" placeholder="Name">
+    </div>
+    </br>
+    <div class="form-row">
         <label for="node-config-input-rows"><i class="fa fa-arrows-alt"></i> Grid</label>
         <span for="node-config-input-rows">Rows</span>
         <input type="text" id="node-config-input-rows" style="width:80px" min="1">
         <span for="node-config-input-columns" style="margin-left:20px;"> Columns</span>
-        <input type="text" id="node-config-input-columns" style="width:80px" min="1">
+        <input type="text" id="node-config-input-columns" style="width:80px" min="1" class="xterm-setting">
     </div>
     <div class="form-row">
         <label for="node-config-input-cursorStyle"><i class="fa fa-terminal"></i> Cursor style</label>
-        <select id="node-config-input-cursorStyle">
+        <select id="node-config-input-cursorStyle" class="xterm-setting">
             <option value="block">Block</option> 
             <option value="underline">Underline</option>
             <option value="bar">Bar</option>
@@ -380,7 +387,7 @@
     </div>
     <div class="form-row">
         <label for="node-config-input-fastScrollModifier"><i class="fa fa-keyboard-o"></i> Fast scroll key</label>
-        <select id="node-config-input-fastScrollModifier">
+        <select id="node-config-input-fastScrollModifier" class="xterm-setting">
             <option value="alt">Alt</option> 
             <option value="ctrl">Ctrl</option>
             <option value="shift">Shift</option>
@@ -389,46 +396,41 @@
     </div>            
     <div class="form-row">
         <label for="node-config-input-scrollback"><i class="fa fa-arrows-v"></i> Scrollback</label>
-        <input type="text" id="node-config-input-scrollback" min="0">
+        <input type="text" id="node-config-input-scrollback" min="0" class="xterm-setting">
     </div>
     <div class="form-row">
         <label for="node-config-input-backgroundColor"><i class="fa fa-paint-brush"></i> Background</span></label>
-        <input type="color" id="node-config-input-backgroundColor"/>
+        <input type="color" id="node-config-input-backgroundColor" class="xterm-setting">
     </div>
     <div class="form-row">
         <label for="node-config-input-foregroundColor"><i class="fa fa-paint-brush"></i> Foreground</span></label>
-        <input type="color" id="node-config-input-foregroundColor"/>
+        <input type="color" id="node-config-input-foregroundColor" class="xterm-setting">
     </div>
     <div class="form-row">
         <label for="node-config-input-scrollSensitivity"><i class="fa fa-tachometer"></i> Scroll</label>
-        <input type="text" id="node-config-input-scrollSensitivity" min="1" max="10">
+        <input type="text" id="node-config-input-scrollSensitivity" min="1" max="10" class="xterm-setting">
     </div>
     <div class="form-row">
         <!-- See https://github.com/xtermjs/xterm.js/pull/2375 -->
         <label for="node-config-input-fastScrollSensitivity"><i class="fa fa-tachometer"></i> Fast scroll</label>
-        <input type="text" id="node-config-input-fastScrollSensitivity" min="1" max="10">
+        <input type="text" id="node-config-input-fastScrollSensitivity" min="1" max="10" class="xterm-setting">
     </div>
     <div class="form-row">
         <label for="node-config-input-fontSize"><i class="fa fa-tachometer"></i> Font size</label>
-        <input type="text" id="node-config-input-fontSize" min="1" max="20">
+        <input type="text" id="node-config-input-fontSize" min="1" max="20" class="xterm-setting">
     </div>
     <div class="form-row">
-        <input type="checkbox" id="node-config-input-cursorBlink" style="display: inline-block; width: auto; vertical-align: top;">
+        <input type="checkbox" id="node-config-input-cursorBlink" class="xterm-setting" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-config-input-cursorBlink" style="width:70%;"> Blinking cursor</label>
     </div>          
     <div class="form-row">
-        <input type="checkbox" id="node-config-input-drawBoldTextInBrightColors" style="display: inline-block; width: auto; vertical-align: top;">
+        <input type="checkbox" id="node-config-input-drawBoldTextInBrightColors" class="xterm-setting" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-config-input-drawBoldTextInBrightColors" style="width:70%;"> Draw bold text in bright colors</label>
     </div>   
     <div class="form-row">
-        <input type="checkbox" id="node-config-input-loggingEnabled" style="display: inline-block; width: auto; vertical-align: top;">
+        <input type="checkbox" id="node-config-input-loggingEnabled" class="xterm-setting" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-config-input-loggingEnabled" style="width:70%;"> Enable detailed logging (for troubleshooting)</label>
     </div>               
-    </br>
-    <div class="form-row">
-        <label for="node-config-input-name"><i class="icon-tag"></i> Name</label>
-        <input type="text" id="node-config-input-name" placeholder="Name">
-    </div>
 </script>
 
 <script type="text/x-red" data-template-name="xterm_config_sidebar">
@@ -455,7 +457,7 @@
                         </div>
                         <div class="form-row" style="height: 100%;">
                             <!-- Background color of the container DIV is black, to fake a terminal always being available (even before we are able to load it) -->
-                            <div id="terminalContainer" style="width: 100%; height: 100%; display: inline-block; padding: 3px; border: none !important; background: #383734 !important"></div>
+                            <div id="terminalContainer" style="width: 100%; height: 100%; display: inline-block; padding: 3px; border: none !important; background: rgb(0, 0, 0) !important"></div>
                         </div>
                     </div>
                     <div id="node-xterm-tab-settings" class="node-xterm-tab-settings" style="position: relative; margin-top: 30px;">
