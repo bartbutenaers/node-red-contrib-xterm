@@ -37,6 +37,7 @@
         var globalServerDataHandler = null;
         var globalTimerId = null;
         var globalTabsheets = null;
+        var globalPreviousDataType = null;
         
         // Ensure that the globalTerminalConfigNode (still) exists.
         // Caution: this function cannot be called from onpaletteadd, because then the RED.nodes are not filled yet!!!
@@ -133,10 +134,6 @@
             },
             onpaletteremove: function () {
                 RED.sidebar.removeTab("sidebar-xterm");
-                /*RED.events.off("deploy", deployEventHandler);
-                RED.events.off("sidebar:resize", sidebarresizeEventHandler);
-                RED.events.off("view:selection-changed", nodeSelectEventHandler);
-                RED.events.off("workspace:change", flowSelectEventHandler);*/
             },
             onpaletteadd: function () {
                 // Add the xterm.js CSS stylesheet to the page head section
@@ -200,6 +197,10 @@
                             screenKeys: true,
                             fontFamily: 'Courier New'
                         };
+                        
+                        // Hide the introduction text
+                        var introText = document.getElementById('xterm_intro');
+                        introText.style.display = "none";
                                         
                         globalTerminal = new Terminal(terminalOptions);
                         var terminalContainer = document.getElementById('terminalContainer');
@@ -229,8 +230,8 @@
                                     var contentType = Object.prototype.toString.call(data.content);
                                     console.log("Terminal data from server (type = " + contentType + "): " + data);
                                 }
-                                
-                                var decodedString;
+                          
+                                var decodedString = "";
                             
                                 // Convert the base64 encoded string back to a string
                                 // Only content type "data" is base64 encode, the other types (error, info, ...) not!
@@ -238,11 +239,20 @@
                                     decodedString = atob(data.content);
                                 }
                                 else {
+                                    // Make sure the comment (error, info, ...) is not displayed after the prompt, but on the next line
+                                    if (globalPreviousDataType === "data") {
+                                        decodedString = "\r\n";
+                                    }                                
+                                    // Xterm comment starts with a "!" character
+                                    decodedString += "! ";
+                                    decodedString += data.content;
                                     // End all error/info/... with an enter, to make sure the next input continues on the next line
-                                    decodedString = "\r\n! " + data.content + "\r\n";
+                                    decodedString += "\r\n";
                                 }
                                     
                                 globalTerminal.write(decodedString);
+                                
+                                globalPreviousDataType = data.type;
                             }
                         }
                     
@@ -340,11 +350,6 @@
                         }
                     })            
                 }
-
-                /*RED.events.on("deploy", deployEventHandler);
-                RED.events.on("sidebar:resize", sidebarresizeEventHandler);
-                RED.events.on("view:selection-changed", nodeSelectEventHandler);
-                RED.events.on("workspace:change", flowSelectEventHandler);*/
                         
                 if (globalTimerId) {
                     clearInterval(globalTimerId);
@@ -371,6 +376,8 @@
         <label for="node-config-input-name"><i class="icon-tag"></i> Name</label>
         <input type="text" id="node-config-input-name" class="xterm-setting" placeholder="Name">
     </div>
+    </br>
+    <div class="form-tips"><b>Terminal will be updated after deploy and refresh!</b></div>
     </br>
     <div class="form-row">
         <label for="node-config-input-rows"><i class="fa fa-arrows-alt"></i> Grid</label>
@@ -443,7 +450,7 @@
                     <!-- Tabsheets -->
                     <ul style="background: #fff; min-width: 600px; margin-bottom: 20px;" id="node-xterm-tabs"></ul>
                 </div>
-                <div id="node-xterm-tabs-content" style=height:calc(100% - 48px)">
+                <div id="node-xterm-tabs-content" style=height:calc(100% - 100px)">
                     <!-- Content of all tabsheets -->
                     <div id="node-xterm-tab-terminal" class="node-xterm-tab-terminal" style="height: 100%; position: relative; margin-top: 30px;">           
                         <div class="form-row">
@@ -459,7 +466,9 @@
                         </div>
                         <div class="form-row" style="height: 100%;">
                             <!-- Background color of the container DIV is black, to fake a terminal always being available (even before we are able to load it) -->
-                            <div id="terminalContainer" style="width: 100%; height: 100%; display: inline-block; padding: 3px; border: none !important; background: rgb(0, 0, 0) !important"></div>
+                            <div id="terminalContainer" style="width: 100%; height: 100%; display: inline-block; padding: 3px; border: none !important; background: rgb(0, 0, 0) !important">
+                                <p id="xterm_intro"><span style="color:white">Click the "Start" button ...</span></p>
+                            </div>
                         </div>
                     </div>
                     <div id="node-xterm-tab-settings" class="node-xterm-tab-settings" style="position: relative; margin-top: 30px;">
