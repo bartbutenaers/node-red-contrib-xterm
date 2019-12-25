@@ -96,11 +96,14 @@
                 
                 // Let the client know that the pseudo terminal has been stopped, in case the client isn't disconnected 
                 // (but the heartbeat didn't arrive in time)
-                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudo terminal has been stopped", type: "info" } ));
+                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudoterminal has been stopped", type: "info" } ));
             }
             catch (err) {
                 RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Cannot stop pseudoterminal: " + err, type: "error" } ));
             }
+        }
+        else {
+            RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudoterminal had not been started yet", type: "info" } ));
         }
     }
     
@@ -146,7 +149,7 @@
                 }
             });
 
-            RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudo terminal has been started (pid = " + ptyProcess.pid + ")", type: "info" } ));
+            RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudoterminal has been started (pid = " + ptyProcess.pid + ")", type: "info" } ));
             
             xtermProcessInfoMap.set(terminalId, {ptyProcess: ptyProcess});
             
@@ -157,15 +160,21 @@
             RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Cannot start pseudoterminal: " + err, type: "error" } ));
         }
     }
-        
+       
     function writeDataToTerminal(terminalId, data, loggingEnabled) {
         try {
             var processInfo = xtermProcessInfoMap.get(terminalId);
-            processInfo.ptyProcess.write(data);
             
-            if (loggingEnabled) {
-                var dataType = Object.prototype.toString.call(data);
-                console.log("Terminal data from client (type = " + dataType + "): " + data);
+            if (processInfo) {
+                processInfo.ptyProcess.write(data);
+                
+                if (loggingEnabled) {
+                    var dataType = Object.prototype.toString.call(data);
+                    console.log("Terminal data from client (type = " + dataType + "): " + data);
+                }
+            }
+            else {
+                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Cannot execute commands when the pseudoterminal is not started yet", type: "error" } ));
             }
         }
         catch (err) {
