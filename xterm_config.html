@@ -1,0 +1,509 @@
+<!--
+  Copyright 2019, Bart Butenaers
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<script src="xterm_shell/undefined/static/xterm.js"></script>
+<script src="xterm_shell/undefined/static/xterm-addon-fit.js"></script>
+
+<script type="text/javascript">
+    // See https://www.w3resource.com/javascript-exercises/javascript-math-exercise-23.php
+    function createTerminalUUID(){
+        var dt = new Date().getTime();
+        var uuid = 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            var r = (dt + Math.random()*16)%16 | 0;
+            dt = Math.floor(dt/16);
+            return (c=='x' ? r :(r&0x3|0x8)).toString(16);
+        });
+        return uuid;
+    }
+    
+    // Multiple flow editors can be open simultaneously, which means multiple terminals can be open simultaneously.
+    // All of these terminals need to work completely independent from each: we don't want the data from these terminals
+    // to become mixed!  We will generate a unique id, to identify this flow editor instance in all communication with the server.
+    // Declare this variable outside the 'function ($)', to make sure the xterm_in node can access it ...
+    const globalTerminalId = createTerminalUUID();
+    
+    (function ($) {
+        var globalTerminalConfigNode = null;
+        var globalTerminal = null;
+        var globalServerDataHandler = null;
+        var globalTimerId = null;
+        var globalTabsheets = null;
+        var globalPreviousDataType = null;
+        
+        // Ensure that the globalTerminalConfigNode (still) exists.
+        // Caution: this function cannot be called from onpaletteadd, because then the RED.nodes are not filled yet!!!
+        // !!!!!!!!!!!!!!! CALL THIS FUNCTION EVERYWHERE THE globalTerminalConfigNode IS BEING USED !!!!!!!!!!!!!!!
+        function ensureXtermConfigNode() {
+            // If we had find it previously, check if it has been deleted beneath us
+            if (globalTerminalConfigNode !== null) {
+                var configNode = RED.nodes.node(globalTerminalConfigNode.id);
+                if (configNode === null) { globalTerminalConfigNode = null; }
+            }
+                
+            // If not found previously, let's go find it
+            if (globalTerminalConfigNode === null) {
+                var configNodes = [];
+                RED.nodes.eachConfig(function(configNode) {
+                    if (configNode.type === 'xterm_config') { 
+                        configNodes.push(configNode); 
+                    }
+                });
+                
+                // Make sure we only have 1 config node
+                while (configNodes.length > 1) {
+                    var configNode = configNodes.pop();
+                    RED.nodes.remove(configNode.id);
+                    RED.nodes.dirty(true);
+                }
+                
+                // When we found a config node, let's use that one
+                if (configNodes.length === 1) { globalTerminalConfigNode = configNodes[0]; }
+            }
+            
+            // When it doesn't exist yet, create it if required
+            if (globalTerminalConfigNode === null) {
+                // TODO controleren of de defaults door de config node code zelf toegepast worden????
+                
+                // Remark: since this config node is dynamically created (and only used in this sidebar which isn't another node), the config
+                // node is in fact "unused".  But since we don't want it to appear "unused" in the "config nodes" panel, we need to set hasUsers
+                // to false (see https://github.com/node-red/node-red/blob/master/CHANGELOG.md#0161-maintenance-release).
+                // The hasUsers needs also to be specified in the RED.nodes.registerType statement!
+                globalTerminalConfigNode = {
+                    id: RED.nodes.id(),
+                    _def: RED.nodes.getType("xterm_config"),
+                    type: "xterm_config",
+                    hasUsers: false, 
+                    users: [],
+                    rows: 60,
+                    columns: 120,
+                    cursorStyle: "bar",
+                    fastScrollModifier: "alt",
+                    scrollSensitivity: 1,
+                    fastScrollSensitivity: 1,
+                    scrollback: 1000,
+                    backgroundColor: "#000000",
+                    foregroundColor: "#ffffff",
+                    fontSize: 14,
+                    cursorBlink: true,
+                    drawBoldTextInBrightColors: true,
+                    loggingEnabled: false,
+                    name: "XTerminal",
+                    label: function() { return this.name || "XTerminal"}
+                }
+                
+                // Add the new config node to the collection of Node-RED nodes
+                RED.nodes.add(globalTerminalConfigNode);
+                
+                // Make sure the "Deploy" button becomes active
+                RED.nodes.dirty(true);
+            }
+        }
+
+        RED.nodes.registerType('xterm_config', {
+            category: 'config',
+            hasUsers: false,
+            defaults: {
+                rows: {value: 60, required: true},
+                columns: {value: 120, required: true},
+                startupCommand: {value: "cd $HOME/.node-red"},
+                cursorStyle: {value: "bar"},
+                fastScrollModifier: {value: "alt"},
+                scrollSensitivity: {value: 1},
+                fastScrollSensitivity: {value: 1},
+                scrollback: {value: 1000},
+                backgroundColor: {value: "#000000"},
+                foregroundColor: {value: "#ffffff"},
+                fontSize: {value: 14},
+                cursorBlink: {value: true},
+                drawBoldTextInBrightColors: {value: true},
+                loggingEnabled: {value: false},
+                name: { value: "XTerminal" }
+            },
+            paletteLabel: 'XTerminal',
+            label: function () {
+                return this.name;
+            },
+            onpaletteremove: function () {
+                RED.sidebar.removeTab("sidebar-xterm");
+            },
+            onpaletteadd: function () {
+                // Add the xterm.js CSS stylesheet to the page head section
+                $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/static/xterm.css" type="text/css" />');
+                
+                // The html content of the sidebar page has been specified a a data-template, from where it can be loaded:
+                var content = $($('script[type="text/x-red"][data-template-name="xterm_config_sidebar"]').i18n().html());
+                
+                // Add a new "Terminal" tabsheet to the sidebar in the flow editor
+                RED.sidebar.addTab({
+                    id: "sidebar-xterm",
+                    label: "terminal_xterm",
+                    name: "Terminal",
+                    content: content,
+                    closeable: true,
+                    disableOnEdit: true,
+                    iconClass: "fa fa-terminal"
+                });
+                
+                // The html content of the config node-settings has been specified as a SECOND data-template.  We will show
+                // the same template both in the config node's config screen, and in the sidebar "Properties" tabsheet.
+                // This way we avoid the same html to be maintained twice.
+                $("#node-xterm-tab-settings").append($('script[type="text/x-red"][data-template-name="xterm_config"]').i18n().html());
+                        
+                // Once the container DIV element has been created, the terminal can be displayed as a child element
+                
+                $("#node-start-terminal").on("click", function (e) {
+                    if (globalTerminalConfigNode === null) {
+                        ensureXtermConfigNode();
+                    }
+                    
+                    // The terminal look-and-feel will be based on the user settings (in the globalTerminalConfigNode).
+                    // We use the rows and columns from the result, because that are the rows and columns that have been used to start
+                    // the pseudo terminal process on the server.  That way the Xterm.js terminal window dimensions will always mach.
+                    // Remark: the rows and columns in the globalTerminalConfigNode will be used (on the server side to start the pseudo
+                    // terminal process), when that config node has already been deployed.  Which means we get then the 
+                    // globalTerminalConfigNode also here via a long roundtrip to the server ...
+
+                    // Create the Xterm.js terminal screen only once.
+                    // We can only do this when the parent DIV container is visible, otherwise the terminal will remain black without text!!!!
+                    // So there seems to be a bug inside the 'open' function.  Similar issues:
+                    // https://github.com/xtermjs/xterm.js/issues/1734
+                    // https://github.com/xtermjs/xterm.js/issues/573
+                    if (globalTerminal === null) {
+                        var terminalOptions = {
+                            rows: globalTerminalConfigNode.rows,
+                            cols: globalTerminalConfigNode.columns,
+                            cursorStyle: globalTerminalConfigNode.cursorStyle,
+                            fastScrollModifier: globalTerminalConfigNode.fastScrollModifier,
+                            scrollback: globalTerminalConfigNode.scrollback,
+                            scrollSensitivity: globalTerminalConfigNode.scrollSensitivity,
+                            fastScrollSensitivity: globalTerminalConfigNode.fastScrollSensitivity,
+                            fontSize: globalTerminalConfigNode.fontSize,
+                            cursorBlink: globalTerminalConfigNode.cursorBlink,
+                            drawBoldTextInBrightColors: globalTerminalConfigNode.drawBoldTextInBrightColors,
+                            theme: {
+                                background: globalTerminalConfigNode.backgroundColor,
+                                foreground: globalTerminalConfigNode.foregroundColor
+                            },
+                            useStyle: true,
+                            screenKeys: true,
+                            fontFamily: 'Courier New'
+                        };
+                        
+                        // Hide the introduction text
+                        var introText = document.getElementById('xterm_intro');
+                        introText.style.display = "none";
+                                        
+                        globalTerminal = new Terminal(terminalOptions);
+                        var terminalContainer = document.getElementById('terminalContainer');
+                        globalTerminal.open(terminalContainer);
+
+                        globalTerminal.onData(function(data) {
+                            if (globalTerminalConfigNode.loggingEnabled) {
+                                var dataType = Object.prototype.toString.call(data);
+                                console.log("Terminal data to server (type = " + dataType + "): " + data);
+                            }
+                            
+                            // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
+                            var base64Data = btoa(data);
+                            $.ajax({
+                                url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data,
+                                //timeout: 3000
+                            });
+                        });
+                 
+                        // Handle data that arrives from the server via the websocket channel
+                        globalServerDataHandler = function(event, dataAsString) {
+                            var data = JSON.parse(dataAsString);
+                            
+                            // Only show data that is intended for this terminal
+                            if (data.terminalId === globalTerminalId) { 
+                                if (globalTerminalConfigNode.loggingEnabled) {
+                                    var contentType = Object.prototype.toString.call(data.content);
+                                    console.log("Terminal data from server (type = " + contentType + "): " + data);
+                                }
+                          
+                                var decodedString = "";
+                            
+                                // Convert the base64 encoded string back to a string
+                                // Only content type "data" is base64 encode, the other types (error, info, ...) not!
+                                if (data.type === "data") {
+                                    decodedString = atob(data.content);
+                                }
+                                else {
+                                    // Make sure the comment (error, info, ...) is not displayed after the prompt, but on the next line
+                                    if (globalPreviousDataType === "data") {
+                                        decodedString = "\r\n";
+                                    }                                
+                                    // Xterm comment starts with a "!" character
+                                    decodedString += "! ";
+                                    decodedString += data.content;
+                                    // End all error/info/... with an enter, to make sure the next input continues on the next line
+                                    decodedString += "\r\n";
+                                }
+                                    
+                                globalTerminal.write(decodedString);
+                                
+                                globalPreviousDataType = data.type;
+                            }
+                        }
+                    
+                        RED.comms.subscribe('xterm_shell', globalServerDataHandler);
+                    }
+                
+                    // Created with http://www.asciiarts.net/ where I used font 'Standard.flf'
+                    // TODO for some reason it doesn't show clearly : see font in constructor and in DIV element style
+                    //globalTerminal.write('\r\n***  _   _           _            ____  _____ ____   ***');
+                    //globalTerminal.write('\r\n*** | \ | | ___   __| | ___      |  _ \| ____|  _ \  ***');
+                    //globalTerminal.write('\r\n*** |  \| |/ _ \ / _` |/ _ \_____| |_) |  _| | | | | ***');
+                    //globalTerminal.write('\r\n*** | |\  | (_) | (_| |  __/_____|  _ <| |___| |_| | ***');
+                    //globalTerminal.write('\r\n*** |_| \_|\___/ \__,_|\___|     |_| \_\_____|____/  ***');
+                    //globalTerminal.write('\r\n'); 
+                    
+                    // Pass the default rows and columns as 'info' parameter.  These will be used on the server side, when currently
+                    // no config node has been deployed on the server yet...
+                    var info = globalTerminalConfigNode.rows + ";" + globalTerminalConfigNode.columns;
+                    // Start the pty pseudo terminal process on the server side
+                    $.ajax({
+                        url: "xterm_shell/" + globalTerminalId + "/start/" + info,
+                        //timeout: 3000
+                    });                        
+                });
+                
+                $("#node-stop-terminal").on("click", function (e) {
+                    // Leave the xterm terminal window open (on the client-side), to show feedback to the user.
+                    // But stop the pty process on the server side
+                    $.ajax({
+                        url: "xterm_shell/" + globalTerminalId +"/stop/undefined",
+                        //timeout: 3000
+                    });              
+                });
+                $("#node-clear-terminal").on("click", function (e) {
+                    globalTerminal.clear();      
+                });                    
+                
+                if (globalTabsheets === null) {
+                    // Show tabsheets
+                    globalTabsheets = RED.tabs.create({
+                        id: "node-xterm-tabs",
+                        onchange: function(tab) {
+                            // Show only the content (i.e. the children) of the selected tabsheet, and hide the others
+                            $("#node-xterm-tabs-content").children().hide();
+                            $("#" + tab.id).show();
+                            
+                            if (tab.id === "node-xterm-tab-settings") {
+                                ensureXtermConfigNode();
+                                
+                                // When navigating to the settings tabsheet, all the config node properties need to be displayed
+                                // into the corresponding input fields
+                                $('.xterm-setting').each(function() {
+                                    var propertyName = $(this).get(0).id.replace("node-config-input-", "");
+                                    var propertyValue = globalTerminalConfigNode[propertyName];
+                                    
+                                    if ($(this)[0].type === "checkbox") {
+                                        $(this).attr("checked", propertyValue);
+                                    }
+                                    else {
+                                        $(this).val(propertyValue);
+                                    }
+                                });
+                            }
+                        }
+                    });
+                    
+                    globalTabsheets.addTab({
+                        id: "node-xterm-tab-terminal",
+                        label: "Terminal"
+                    });
+                    
+                    globalTabsheets.addTab({
+                        id: "node-xterm-tab-settings",
+                        label: "Settings"
+                    });
+                    
+                    // For every setting input field, we will have to store the changed values into the config node
+                    $(".xterm-setting").on("change", function() {
+                        ensureXtermConfigNode();
+                    
+                        var propertyName = this.id.replace("node-config-input-", "");
+                        var propertyValue = $(this).val();
+                        
+                        if (this.type === "checkbox") {
+                            // For checkboxes we don't want to use the on/off values, but instead true/false
+                            propertyValue = this.checked;
+                        }
+            
+                        // When the property value has changed, save it in the config node and activate the 'deploy' button.
+                        // Remark: don't check the input type (i.e. use != instead of  !==) because we will get the number values as strings...
+                        if (!globalTerminalConfigNode || globalTerminalConfigNode[propertyName] != propertyValue) {
+                            ensureXtermConfigNode();
+                            globalTerminalConfigNode[propertyName] = propertyValue;
+                            RED.nodes.dirty(true);
+                        }
+                    })            
+                }
+                        
+                if (globalTimerId) {
+                    clearInterval(globalTimerId);
+                    globalTimerId = null;
+                }
+                
+                // When the flow editor is closed, the corresponding pseudo terminal process (on server side) should be killed.
+                // However it seems there is no way to determine that on the server side, see:
+                // https://discourse.nodered.org/t/detect-when-flow-editor-is-closed/18357/3?u=bartbutenaers
+                // Therefore we will send a heartbeat every 5 seconds to the server.
+                globalTimerId = setInterval(function() {
+                    $.ajax({
+                        url: "xterm_shell/" + globalTerminalId +"/heartbeat/undefined",
+                        //timeout: 3000                
+                    });
+                }, 5000);
+            }
+        });
+    })(jQuery);
+</script>
+
+<script type="text/x-red" data-template-name="xterm_config">
+    <div class="form-row">
+        <label for="node-config-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-config-input-name" class="xterm-setting" placeholder="Name">
+    </div>
+    </br>
+    <div class="form-tips"><b>Terminal will be updated after deploy and refresh!</b></div>
+    </br>
+    <div class="form-row">
+        <label for="node-config-input-rows"><i class="fa fa-arrows-alt"></i> Grid</label>
+        <span for="node-config-input-rows">Rows</span>
+        <input type="text" id="node-config-input-rows" style="width:80px" min="1" class="xterm-setting">
+        <span for="node-config-input-columns" style="margin-left:20px;"> Columns</span>
+        <input type="text" id="node-config-input-columns" style="width:80px" min="1" class="xterm-setting">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-cursorStyle"><i class="fa fa-terminal"></i> Cursor style</label>
+        <select id="node-config-input-cursorStyle" class="xterm-setting">
+            <option value="block">Block</option> 
+            <option value="underline">Underline</option>
+            <option value="bar">Bar</option>
+        </select>
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-fastScrollModifier"><i class="fa fa-keyboard-o"></i> Fast scroll key</label>
+        <select id="node-config-input-fastScrollModifier" class="xterm-setting">
+            <option value="alt">Alt</option> 
+            <option value="ctrl">Ctrl</option>
+            <option value="shift">Shift</option>
+            <option value="undefined">Undefined</option>
+        </select>
+    </div>            
+    <div class="form-row">
+        <label for="node-config-input-scrollback"><i class="fa fa-arrows-v"></i> Scrollback</label>
+        <input type="text" id="node-config-input-scrollback" min="0" class="xterm-setting">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-backgroundColor"><i class="fa fa-paint-brush"></i> Background</span></label>
+        <input type="color" id="node-config-input-backgroundColor" class="xterm-setting">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-foregroundColor"><i class="fa fa-paint-brush"></i> Foreground</span></label>
+        <input type="color" id="node-config-input-foregroundColor" class="xterm-setting">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-scrollSensitivity"><i class="fa fa-tachometer"></i> Scroll</label>
+        <input type="text" id="node-config-input-scrollSensitivity" min="1" max="10" class="xterm-setting">
+    </div>
+    <div class="form-row">
+        <!-- See https://github.com/xtermjs/xterm.js/pull/2375 -->
+        <label for="node-config-input-fastScrollSensitivity"><i class="fa fa-tachometer"></i> Fast scroll</label>
+        <input type="text" id="node-config-input-fastScrollSensitivity" min="1" max="10" class="xterm-setting">
+    </div>
+    <div class="form-row">
+        <label for="node-config-input-fontSize"><i class="fa fa-tachometer"></i> Font size</label>
+        <input type="text" id="node-config-input-fontSize" min="1" max="20" class="xterm-setting">
+    </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-config-input-cursorBlink" class="xterm-setting" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-cursorBlink" style="width:70%;"> Blinking cursor</label>
+    </div>          
+    <div class="form-row">
+        <input type="checkbox" id="node-config-input-drawBoldTextInBrightColors" class="xterm-setting" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-drawBoldTextInBrightColors" style="width:70%;"> Draw bold text in bright colors</label>
+    </div>   
+    <div class="form-row">
+        <input type="checkbox" id="node-config-input-loggingEnabled" class="xterm-setting" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-config-input-loggingEnabled" style="width:70%;"> Enable detailed logging (for troubleshooting)</label>
+    </div>               
+</script>
+
+<script type="text/x-red" data-template-name="xterm_config_sidebar">
+    <div style="position: relative; height: 100%;">
+        <div style="position: absolute; top: 1px; bottom: 2px; left: 1px; right: 1px; overflow-y: scroll; padding: 10px;"> 
+            <form class="dialog-form">
+                <div class="red-ui-tabs">
+                    <!-- Tabsheets -->
+                    <ul style="background: #fff; min-width: 600px; margin-bottom: 20px;" id="node-xterm-tabs"></ul>
+                </div>
+                <div id="node-xterm-tabs-content" style=height:calc(100% - 100px)">
+                    <!-- Content of all tabsheets -->
+                    <div id="node-xterm-tab-terminal" class="node-xterm-tab-terminal" style="height: 100%; position: relative; margin-top: 30px;">           
+                        <div class="form-row">
+                            <button id="node-start-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Start terminal">
+                                <i class="fa fa-play"></i>    
+                            </button>
+                            <button id="node-stop-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Stop terminal">
+                                <i class="fa fa-stop"></i>    
+                            </button>
+                            <button id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
+                                <i class="fa fa-trash"></i>    
+                            </button>
+                        </div>
+                        <div class="form-row" style="height: 100%;">
+                            <!-- Background color of the container DIV is black, to fake a terminal always being available (even before we are able to load it) -->
+                            <div id="terminalContainer" style="width: 100%; height: 100%; display: inline-block; padding: 3px; border: none !important; background: rgb(0, 0, 0) !important">
+                                <p id="xterm_intro"><span style="color:white">Click the "Start" button ...</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="node-xterm-tab-settings" class="node-xterm-tab-settings" style="position: relative; margin-top: 30px;">
+                        <!-- The config node settings (from data-template-name="xterm_config") will be added here -->
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</script>
+
+<script type="text/x-red" data-help-name="xterm_config">
+    <p>Configuration for an Xterm terminal screen.</p>
+    <p><strong>Start command:</strong><br/>
+    Command that need to be executed automatically when the terminal is started.</p>
+    <p><strong>Grid:</strong><br/>
+    The number of rows and columns that need to be displayed inside the terminal.  Both characteristcs are specified in number of characters.</p>
+    <p><strong>Cursor style:</strong><br/>
+    Specifies how the cursor should be displayed.</p>    
+    <p><strong>Fast scroll key:</strong><br/>
+    The modifier key hold to multiply scroll speed.</p>                 
+    <p><strong>Scrollback:</strong><br/>
+    The number of rows that are retained when lines are scrolled beyond the initial viewport.</p>               
+    <p><strong>Background:</strong><br/>
+    The background color of the terminal window.</p>             
+    <p><strong>Foreground:</strong><br/>
+    The foreground color of the text on the terminal window.</p>              
+    <p><strong>Scroll:</strong><br/>
+    The scroll speed multiplier used for scrolling..</p>                         
+    <p><strong>Fast scroll:</strong><br/>
+    The scroll speed multiplier used for fast scrolling..</p>                   
+    <p><strong>Blinking cursor :</strong><br/>
+    Whether the cursor should be blinking or not.</p>     
+    <p><strong>Draw bold text in bright colors:</strong><br/>
+    Whether to draw bold text in bright colors.</p>  
+    <p><strong>Enable data logging:</strong><br/>
+    Enable logging of all the data being send (both on client and server side), to simplify troubleshooting in case of problems.</p>     
+</script>

@@ -1,0 +1,110 @@
+<!--
+  Copyright 2019, Bart Butenaers
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+  http://www.apache.org/licenses/LICENSE-2.0
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+<script type="text/javascript">  
+    RED.nodes.registerType('xterm_in',{
+        category: 'system',
+        color: 'rgb(153, 153, 153)',
+        defaults: {
+            command: {value: ""},
+            addEnter: {value: true},
+            confirmation: {value: false},
+            name: {value: ""}
+        },
+        inputs: 0,
+        outputs: 0,
+        icon: "font-awesome/fa-terminal",
+        align: 'left',
+        paletteLabel: "Terminal input",
+        label: function() {
+            var name = this.name;
+            
+            if (this.confirmation) {
+                name = "!! " + name + " !!";
+            }
+            
+            return name || "Terminal input";
+        },
+        button: {
+            /*enabled: function() {
+                return !this.changed
+            },*/
+            onclick: function() {
+                if (this.changed) {
+                    return RED.notify(RED._("notification.warning", {message:RED._("notification.warnings.undeployedChanges")}),"warning");
+                }
+                
+                var node = this;
+                
+                if (node.confirmation) {
+                    var answer = confirm("Execute this command in the terminal?");
+                    if (answer === false) {
+                        // Don't execute the command
+                        return;
+                    }
+                }
+                
+                var command = node.command;
+
+                if (node.addEnter) {
+                    command += "\n";
+                }
+                
+                // Ask the http endpoint to inject the command into the terminal.  Since we only arrive here when the command hasn't been
+                // changed, we can inject the command itself here (since it has the same command value as the deployed node on the server).    
+                var base64Data = btoa(command);
+                
+                $.ajax({
+                    // Use the globalTerminalId, which is a global variable set by the sidebar panel (see xterm_config.js).
+                    url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data/*,
+                    success: function(resp) {
+                        //RED.notify(node._("inject.success",{label:label}),{type:"success",id:"inject"});
+                    },
+                    error: function(jqXHR,textStatus,errorThrown) {
+                        if (jqXHR.status == 404) {
+                            RED.notify(node._("common.notification.error",{message:node._("common.notification.errors.not-deployed")}),"error");
+                        } else if (jqXHR.status == 500) {
+                            RED.notify(node._("common.notification.error",{message:node._("inject.errors.failed")}),"error");
+                        } else if (jqXHR.status == 0) {
+                            RED.notify(node._("common.notification.error",{message:node._("common.notification.errors.no-response")}),"error");
+                        } else {
+                            RED.notify(node._("common.notification.error",{message:node._("common.notification.errors.unexpected",{status:jqXHR.status,message:textStatus})}),"error");
+                        }
+                    }*/
+                });
+            }
+        }
+    });
+</script>
+
+<script type="text/x-red" data-template-name="xterm_in">
+    <div class="form-row">
+        <label for="node-input-command"><i class="fa fa-terminal"></i> Command</label>
+        <input type="text" id="node-input-command" placeholder="Enter a terminal command">
+    </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-input-addEnter" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-addEnter" style="width:70%;"> Add 'enter' automatically</label>
+    </div>
+    <div class="form-row">
+        <input type="checkbox" id="node-input-confirmation" style="display: inline-block; width: auto; vertical-align: top;">
+        <label for="node-input-confirmation" style="width:70%;"> Show confirmation popup</label>
+    </div> 
+    </br>
+    <div class="form-row">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+</script>
+<script type="text/html" data-help-name="xterm_in">
+    <p>A Node Red node to send commands to the terminal.</p>    
+</script>
