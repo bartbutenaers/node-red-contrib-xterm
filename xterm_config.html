@@ -141,7 +141,7 @@
             onpaletteadd: function () {
                 // Add the xterm.js CSS stylesheet to the page head section
                 $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/static/xterm.css" type="text/css" />');
- debugger;                   
+                
                 // The html content of the sidebar page has been specified a a data-template, from where it can be loaded:
                 var content = $($('script[type="text/x-red"][data-template-name="xterm_config_sidebar"]').i18n().html());
                 
@@ -239,7 +239,7 @@
                                 }
                                 else {
                                     // End all error/info/... with an enter, to make sure the next input continues on the next line
-                                    decodedString = data.content + "\r\n";
+                                    decodedString = "\r\n! " + data.content + "\r\n";
                                 }
                                     
                                 globalTerminal.write(decodedString);
@@ -269,20 +269,12 @@
                 });
                 
                 $("#node-stop-terminal").on("click", function (e) {
-                    if (globalTerminal) {
-                        // Stop the xterm terminal on the client side (remark 'destroy' has been removed...)
-                        globalTerminal.dispose(); 
-                    }
-                    
-                    // Stop the pty process on the server side
+                    // Leave the xterm terminal window open (on the client-side), to show feedback to the user.
+                    // But stop the pty process on the server side
                     $.ajax({
                         url: "xterm_shell/" + globalTerminalId +"/stop/undefined",
                         //timeout: 3000
-                    });
-                    
-                    if (globalServerDataHandler) {
-                        RED.comms.unsubscribe('xterm_shell', globalServerDataHandler);
-                    }                  
+                    });              
                 });
                 $("#node-clear-terminal").on("click", function (e) {
                     globalTerminal.clear();      
