@@ -13,7 +13,7 @@
 <script type="text/javascript">  
     RED.nodes.registerType('xterm_in',{
         category: 'system',
-        color: 'rgb(138, 130, 110)',
+        color: 'rgb(153, 153, 153)',
         defaults: {
             command: {value: ""},
             addEnter: {value: true},
@@ -26,7 +26,13 @@
         align: 'left',
         paletteLabel: "Terminal input",
         label: function() {
-            return this.name || "Terminal input";
+            var name = this.name;
+            
+            if (this.confirmation) {
+                name = "!! " + name + " !!";
+            }
+            
+            return name || "Terminal input";
         },
         button: {
             /*enabled: function() {
