@@ -21,10 +21,6 @@ module.exports = function(RED) {
         RED.nodes.createNode(this, config);
         
         var node = this;
-        
-        node.on("input", function(msg) {
-            // TODO deze payload naar de pseudo terminal writen
-        });
 
         node.on("close", function() {
             if (done) {
