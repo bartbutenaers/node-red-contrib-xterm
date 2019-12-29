@@ -23,8 +23,7 @@
     "node-red"     : {
         "nodes": {
             "xterm_config": "xterm_config.js",
-            "xterm_in": "xterm_in.js",
-            "xterm_out": "xterm_out.js"
+            "xterm_in": "xterm_in.js"
         }
     }
 }
