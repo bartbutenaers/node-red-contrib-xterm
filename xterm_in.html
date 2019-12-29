@@ -18,6 +18,7 @@
             command: {value: ""},
             addEnter: {value: true},
             confirmation: {value: false},
+            rows: {value: 1},
             name: {value: ""}
         },
         inputs: 0,
@@ -39,6 +40,8 @@
                 return !this.changed
             },*/
             onclick: function() {
+                //var roundTripFinished = false;
+                
                 if (this.changed) {
                     return RED.notify(RED._("notification.warning", {message:RED._("notification.warnings.undeployedChanges")}),"warning");
                 }
@@ -46,12 +49,41 @@
                 var node = this;
                 
                 if (node.confirmation) {
-                    var answer = confirm("Execute this command in the terminal?");
+                    var answer = confirm("Execute these commands in the terminal?");
                     if (answer === false) {
                         // Don't execute the command
                         return;
                     }
                 }
+                
+                // UNFORTUNATELY WE CANNOT SEND THE RESULT (FROM THE PSEUDO-TERMINAL) AS AN OUTPUT MESSAGE.
+                // INDEED SINCE THIS NODE RUNS ON THE SERVER SIDE, IT WILL OUTPUT THE RESULTS OF THE TERMINAL WINDOWS IN ALL
+                // FLOW EDITORS (THAT ARE OPEN AT THE MOMENT).  WE COULD FILTER HERE ON THE TERMINALID OF THE CURRENT FLOW
+                // EDITOR, BUT EVEN THEN ALL FLOW EDITOR INSTANCES WOULD DO THE SAME.  SO ON THE SERVER SIDE THE OUTPUT
+                // OF ALL CLIENTS WOULD APPEAR. SO THAT MAKES NO SENSE !!!!!!!!!!!!!!!!!!!
+                /*
+                // Handle data that arrives from the server via the websocket channel           
+                RED.comms.subscribe('xterm_shell', function(event, dataAsString) {
+                    var data = JSON.parse(dataAsString);
+                    
+                    // Only show 'data' that is intended for this terminal
+                    if (data.terminalId === globalTerminalId && data.type === "data") {
+                        // Convert the base64 encoded data string back to a string
+                        var decodedString = atob(data.content);
+                        
+                        if (roundTripFinished) {
+                            node.send({ payload: decodedString, command: node.command });
+                        }
+                        else {
+                            // As soon as we receive our own command, the command has made an entire roundtrip to the server and back.
+                            // From that moment on, we need to start processing the data ...
+                            if (data.content === node.command) {
+                                roundTripFinished = true;
+                            }
+                        }
+                    }
+                }
+                */
                 
                 var command = node.command;
 
@@ -65,21 +97,13 @@
                 
                 $.ajax({
                     // Use the globalTerminalId, which is a global variable set by the sidebar panel (see xterm_config.js).
-                    url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data/*,
+                    url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data,
                     success: function(resp) {
-                        //RED.notify(node._("inject.success",{label:label}),{type:"success",id:"inject"});
+                        RED.notify("Command has been send to the pseudo terminal", "success");
                     },
                     error: function(jqXHR,textStatus,errorThrown) {
-                        if (jqXHR.status == 404) {
-                            RED.notify(node._("common.notification.error",{message:node._("common.notification.errors.not-deployed")}),"error");
-                        } else if (jqXHR.status == 500) {
-                            RED.notify(node._("common.notification.error",{message:node._("inject.errors.failed")}),"error");
-                        } else if (jqXHR.status == 0) {
-                            RED.notify(node._("common.notification.error",{message:node._("common.notification.errors.no-response")}),"error");
-                        } else {
-                            RED.notify(node._("common.notification.error",{message:node._("common.notification.errors.unexpected",{status:jqXHR.status,message:textStatus})}),"error");
-                        }
-                    }*/
+                        RED.notify(jqXHR.responseJSON.error, "error");
+                    }
                 });
             }
         }
@@ -88,8 +112,13 @@
 
 <script type="text/x-red" data-template-name="xterm_in">
     <div class="form-row">
-        <label for="node-input-command"><i class="fa fa-terminal"></i> Command</label>
-        <input type="text" id="node-input-command" placeholder="Enter a terminal command">
+        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
+        <input type="text" id="node-input-name" placeholder="Name">
+    </div>
+    </br>
+    <div class="form-row">
+        <label for="node-input-command"><i class="fa fa-terminal"></i> Command(s)</label>
+        <textarea id="node-input-command" rows="15" style="width: 100%;" placeholder="Enter a terminal command"></textarea>
     </div>
     <div class="form-row">
         <input type="checkbox" id="node-input-addEnter" style="display: inline-block; width: auto; vertical-align: top;">
@@ -99,12 +128,19 @@
         <input type="checkbox" id="node-input-confirmation" style="display: inline-block; width: auto; vertical-align: top;">
         <label for="node-input-confirmation" style="width:70%;"> Show confirmation popup</label>
     </div> 
-    </br>
-    <div class="form-row">
-        <label for="node-input-name"><i class="icon-tag"></i> Name</label>
-        <input type="text" id="node-input-name" placeholder="Name">
-    </div>
 </script>
 <script type="text/html" data-help-name="xterm_in">
-    <p>A Node Red node to send commands to the terminal.</p>    
+    <p>A Node Red node to send command(s) to the terminal.</p>
+    <p>The specified command(s) will be injected into the terminal window (located in the 'Terminal' tabsheet on the sidebar) to be executed.</p>
+    <p><strong>Command(s):</strong><br/>
+    Specify the command(s) that need to be executed in the terminal window .  Multiple commands (each on a separate line!) can be added to create a script.</p>
+    <p><strong>Add 'enter' automatically:</strong><br/>
+    Specify whether an 'enter' key (i.e. a newline character) will be added automatically after the last command.  
+    <ul>
+        <li>When selected, the specified command will be executed immediately (automatically).</li>
+        <li>When unselected, the specified command will not be executed automatically.  Which means it appears in the terminal window, but you have to press manually the enter key to execute it.</li>
+    </ul>
+    This checkbox has more added value in case of a single command, since multiple commands are separated by enter's anyway ...</p>
+    <p><strong>Show confirmation popup:</strong><br/>
+    Critical commands (e.g. reboot the system) can be protected by a confirmation dialog, to avoid those commands being executed in the wrong circumstances.  E.g. you might have pressed the inject button by accident...</p>
 </script>
