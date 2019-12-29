@@ -4,7 +4,7 @@ A Node-RED node terminal front-end, to execute backend CLI commands.
 ## Install
 Run the following npm command in your Node-RED user directory (typically ~/.node-red):
 ```
-npm install node-red-contrib-xterm
+npm install bartbutenaers/node-red-contrib-xterm
 ```
 
 ## Node usage
@@ -13,23 +13,23 @@ It consists out of two parts that closely work together:
 + A ***sidebar tabsheet*** where the terminal window is displayed, which can be used to enter commands that need to be executed on the server (that runs Node-RED).
 + A ***Terminal input*** node which can be used to store your favorite commands, and send them to the terminal.
 
-Each flow editor instance will have its own terminal session on the server side, which means that each editor will have its own independent terminal screen.  As a result, multiple users can execute commands independently from each other.
+Each flow editor instance will have its own terminal session on the server side, which means that each editor will have its own independent terminal screen.  As a result, multiple users can execute commands (in their own flow editor instance), independently from each other.
 
 Currently macOS, Linux and Windows are supported on the server side.
 
 ## Sidebar tabsheet
 
-A custom sidebar tabsheet is available, that can setup in a few steps:
+A custom sidebar tabsheet is available, that can be setup in a few steps:
 1. Navigate to the *'Terminal'* tabsheet in the sidebar.
-1. Press the *'Start'* button to start a pseudo terminal on the server side and simultaneously displays an Xterm terminal window.
+1. Press the *'Start'* button to start a pseudo terminal (on the server side), and simultaneously display an Xterm terminal window (in the sidebar).
 1. Start entering your CLI commands into the terminal window.  Depending on the server's operating system, other commands will be required.
 1. Press the *'Clear'* button to clear the content of the terminal window.
 1. In case of problems with the pseudo terminal (on the server), you can press the *'Start'* button again.  Then the pseudo terminal (on the server) will be stopped and a new pseudo terminal will be started automatically.
 1. If the pseudo terminal is not needed anymore, you could press the *'Stop'* button.  This might be useful in a multi-user environment, since the number of allowed pseudo terminals can be restricted on some systems.  
    Remark: it is also possible to use CLI commands to quit the terminal session (e.g. "exit" command on Linux).
-1. Optionally the terminal window settings can be customized in the *"Settings"* tabheet, but follow the instructions on that tabsheet to activate those changes.  Indeed the rows and columns of the terminal window (client side) and the pseudo terminal (server side) should always be the same, otherwise texts will start *overlapping* (i.e. overriding) in the terminal window!
+1. Optionally the terminal window settings can be customized in the *"Settings"* tabheet, but follow the instructions on that tabsheet to activate those changes.  Indeed the number of rows and columns of the terminal window (client side) and the pseudo terminal (server side) should always be identical!  Otherwise texts will start *overlapping* (i.e. overriding) in the terminal window!
 
-All node-related information (pseudo terminal started, pseudo terminal stopped, ...) and server side errors are being displayed inside the terminal window.
+All node-related information (pseudo terminal started, pseudo terminal stopped, ...) and server side errors are being displayed INSIDE the terminal window.
 
 A short demo of the sidebar tabsheet:
 
@@ -82,7 +82,7 @@ A short demo to explain how it works:
 The following settings can be adjusted, to customize the behaviour of the Terminal Input node:
 
 ### Command(s):
-Specify the command(s) that need to be executed in the terminal window . Multiple commands (each on a separate line!) can be added to create a script, as you can see in this demo:
+Specify the command(s) that need to be executed in the terminal window . Multiple commands (each on a separate line!) can be added to create a *script*, as you can see in this demo:
 
 ![xterm_demo_input_multiple](https://user-images.githubusercontent.com/14224149/71563941-83a14000-2a98-11ea-8b6a-8255f71d6ae0.gif)
 
@@ -97,7 +97,7 @@ Remark: this checkbox has more added value in case of a single command, since mu
 ### Show confirmation popup:
 Critical commands (e.g. reboot the system) can be protected by a confirmation dialog, to avoid those commands being executed in the wrong circumstances. E.g. you might have pressed the inject button by accident...
 
-The following demo explains how to a *'reboot'* command can be cancelled, when being clicked:
+The following demo explains how to a *'reboot'* command can be secured, and cancelled when being clicked:
 
 ![xterm_demo_input_confirmation](https://user-images.githubusercontent.com/14224149/71563976-d67af780-2a98-11ea-96ed-ac4dc1df79a2.gif)
 
@@ -118,11 +118,11 @@ The following diagram explains the entire trajectory between the terminal and th
 This communication mechanism allows data to be pushed on the fly to the terminal (e.g. when tailing a file), where it will be displayed to the user).
 
 ### Limitations
-Since multiple flow editors can be active at the same time, some kind of terminal management is required.  To accomplish this, the sidebar channel assigns a ***unique terminal Id*** to the flow editor where it is being displayed.  That terminal id is being transferred between the terminal window (client side) and the pseudo terminal (server side) to make sure the data of the multiple terminals don't get mixed.
+Since multiple flow editors can be active at the same time, some kind of terminal management is required.  To accomplish this, the sidebar coding assigns a ***unique terminal Id*** to the flow editor where it is being displayed.  That terminal id is being transferred all the time between the terminal window (client side) and the pseudo terminal (server side), to make sure the data of the multiple terminals doesn't get mixed.
 
 This is also the main reason why I had to implement my own *Terminal Input* node: this node will also sends that unique terminal id to the server, to make sure that the data will be inject in the terminal window of the **SAME** flow editor (where the Terminal Input node's button has been clicked)!  If I would have reused the Inject node, the server wouldn't have been able to determine in which terminal the data should be inserted.  *Therefore it is not possible to use the Inject node to inject commands into the terminal!*
 
-It would have been nice to have a *Terminal output* node, to capture the output of a command and process that data in your Node-RED flow.  However such a Terminal Output node runs on the server, which means it is a single node instance that would get the data from all commands from all connected terminals.  This way data from all connected terminals gets mixed, which is totally useless.  *Therefore it is not possible to create a useful Terminal Output node.* 
+It would have been nice to have a *Terminal output* node, to capture the output of a command and process that data in your Node-RED flow.  However such a Terminal Output node runs on the server, which means it is a single node instance that would get the data from all commands from all connected terminals.  This way data from all connected terminals gets mixed, which is totally useless.  Moreover the data would also contain the input from the user (so not only the terminal output)!  *Therefore it is not possible to create a useful Terminal Output node.* 
 
 It is also *not useful to have an output on the Terminal Input node*: a single Terminal Input node on the server side, will be visualized in every flow editor.  So the injected commands from all users will arrive at the same Terminal Input node instance, which means the data again will be mixed. 
 
