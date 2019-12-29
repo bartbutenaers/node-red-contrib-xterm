@@ -85,14 +85,14 @@
         var processInfo = xtermProcessInfoMap.get(terminalId);
         
         if (processInfo) {        
-            try {
+            try {           
+                xtermProcessInfoMap.delete(terminalId);
+                
                 processInfo.ptyProcess.kill();
                 
                 if (processInfo.timerId) {
                     clearInterval(processInfo.timerId);
                 }
-                
-                xtermProcessInfoMap.delete(terminalId);
                 
                 // Let the client know that the pseudo terminal has been stopped, in case the client isn't disconnected 
                 // (but the heartbeat didn't arrive in time)
@@ -144,6 +144,22 @@
                 } 
                 catch (ex) {
                     // The WebSocket is not open, ignore
+                }
+            });
+            
+            ptyProcess.on('exit', function(c) {
+                // We arrive here always the ptyProcess is exited.  But when the trigger is a CLI command (e.g. "exit" in Linux),
+                // we still need to remove the ptyProcess from our map ...
+                if (xtermProcessInfoMap.has(terminalId)) {
+                    stopTerminal(terminalId, "", loggingEnabled);
+                }
+            });
+            
+            ptyProcess.on('SIGINT', c => {
+                // We arrive here always the ptyProcess is killed.  But when the trigger from somewhere outside,
+                // we still need to remove the ptyProcess from our map ...
+                if (xtermProcessInfoMap.has(terminalId)) {
+                    stopTerminal(terminalId, "", loggingEnabled);
                 }
             });
 
