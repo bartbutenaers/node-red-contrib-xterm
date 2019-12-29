@@ -75,7 +75,7 @@
             
             // We will get a heartbeat from the client every 5 seconds.  When we haven't received that heartbeat within 10 seconds, we assume 
             // that the client has disconnected.  In that case the pseudo terminal of that client will be stopped...
-            processInfo.timerId    = setInterval(function() {
+            processInfo.timerId = setInterval(function() {
                 stopTerminal(terminalId, "by heartbeat", loggingEnabled);
             }, 10000);
         }
@@ -118,14 +118,14 @@
             const env = Object.assign({}, process.env);
             env['COLORTERM'] = 'truecolor';
         
-            rows = parseInt(rows);
-            cols = parseInt(columns);
+            rows = parseInt(rows || 24);
+            cols = parseInt(columns || 80);
             
             // Create a child process of the current (Node-RED) process
             var ptyProcess = pty.spawn(process.platform === 'win32' ? 'cmd.exe' : 'bash', [], {
               name: 'xterm-256color',
-              cols: cols || 80,
-              rows: rows || 24,
+              cols: cols,
+              rows: rows,
               cwd: env.PWD,
               env: env,
               encoding: xtermUseBinaryTransport ? null : 'utf8'
@@ -133,8 +133,6 @@
             
             ptyProcess.on('data', function(data) {
                 try {
-                    //TODO send data in output message ???? node.send(data);
-                    
                     // Uncomment this code in case of severe problems on some systems ...
                     // var dataType = Object.prototype.toString.call(data);
                     // console.log("Terminal data to client (type = " + dataType + "): " + data);
@@ -149,7 +147,7 @@
                 }
             });
 
-            RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudoterminal has been started (pid = " + ptyProcess.pid + ")", type: "info" } ));
+            RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudoterminal has been started (pid=" + ptyProcess.pid + " rows=" + rows + " cols=" + cols + ")", type: "info" } ));
             
             xtermProcessInfoMap.set(terminalId, {ptyProcess: ptyProcess});
             
@@ -162,6 +160,8 @@
     }
        
     function writeDataToTerminal(terminalId, data, loggingEnabled) {
+        var errorText;
+        
         try {
             var processInfo = xtermProcessInfoMap.get(terminalId);
             
@@ -174,12 +174,16 @@
                 }
             }
             else {
-                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Cannot execute commands when the pseudoterminal is not started yet", type: "error" } ));
+                errorText = "Cannot execute commands when the pseudoterminal is not started yet";
+                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: errorText, type: "error" } ));
             }
         }
         catch (err) {
-            RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Cannot write date to pseudoterminal: " + err, type: "error" } ));
-        }  
+            errorText = "Cannot write date to pseudoterminal: " + err;
+            RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: errorText, type: "error" } ));
+        } 
+
+        return errorText;
     }
         
     function XtermConfigurationNode (config) {
@@ -234,7 +238,7 @@
                     // Don't log because xterm also tries to load some mapping files, which are required to
                     // do source mapping from Javascript to the original Typescript code.  But we don't need that.
                     //console.log("Unknown javascript file '" + req.params.info + "'");
-                    res.status(404).json('Unknown static file ' + filePath);                        
+                    res.status(404).json({error: 'Unknown static file ' + filePath});                        
                 }
                         
                 break;
@@ -248,7 +252,7 @@
                 // When a config node is available on the server side, we will use it's dimensions to create a pseudo terminal.
                 if (xtermShellNode) {
                     rows = xtermShellNode.rows;
-                    columns = xtermShellNode.rows;
+                    columns = xtermShellNode.columns;
                 }
 
                 startTerminal(req.params.terminal_id, rows, columns, loggingEnabled);
@@ -259,23 +263,31 @@
                 break;
             case "stop":
                 stopTerminal(req.params.terminal_id, "by user", loggingEnabled);
-                res.status(200).json('success');
+                res.status(200).json({});
                 break;
             case "write":
                 var base64Decoded = new Buffer(req.params.info, 'base64').toString('ascii');
                 
                 // Process the command line data (info contains command line input)
-                writeDataToTerminal(req.params.terminal_id, base64Decoded, loggingEnabled);
-                res.status(200).json('success');
+                var errorText = writeDataToTerminal(req.params.terminal_id, base64Decoded, loggingEnabled);
+                
+                // The xterm_in node (doesn't listen to the websocket so it) has to be informed whether the command
+                // has been transferred to the pseudo terminal correctly
+                if (!errorText) {
+                    res.status(200).json({});
+                }
+                else {
+                    res.status(500).json({error: errorText});
+                }
                 break;
             case "heartbeat":
                 // Restart the timer whenever a heartbeat arrives
                 startTimer(req.params.terminal_id);
-                res.status(200).json('success');
+                res.status(200).json({});
                 break;
             default:
                 console.log("Unknown command '" + req.params.command + "'");
-                res.status(404).json('Unknown command');
+                res.status(404).json({error: 'Unknown command'});
         }
     });
 }
