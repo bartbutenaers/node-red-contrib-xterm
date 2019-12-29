@@ -311,7 +311,10 @@
                     $.ajax({
                         url: "xterm_shell/" + globalTerminalId + "/start/" + info,
                         //timeout: 3000
-                    });                        
+                    });     
+
+                    // As soon as the terminal window is started, it should have focus (so commands can be entered right away)
+                    globalTerminal.focus();                    
                 });
                 
                 $("#node-stop-terminal").on("click", function (e) {
@@ -353,6 +356,14 @@
                                     }
                                 });
                             }
+                            
+                            if (tab.id === "node-xterm-tab-terminal") {
+                                if (globalTerminal) {
+                                    // As soon as the terminal tabsheet becomes visible again, the terminal window should get focus
+                                    // (so commands can be entered right away)
+                                    globalTerminal.focus();
+                                }
+                            }                                
                         }
                     });
                     
