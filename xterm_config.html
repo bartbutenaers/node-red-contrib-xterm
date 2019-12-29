@@ -34,6 +34,7 @@
     (function ($) {
         var globalTerminalConfigNode = null;
         var globalTerminal = null;
+        var globalFitAddon = null;
         var globalServerDataHandler = null;
         var globalTimerId = null;
         var globalTabsheets = null;
@@ -107,6 +108,13 @@
                 RED.nodes.dirty(true);
             }
         }
+        
+        function sidebarResizeEventHandler() {
+            if (globalFitAddon) {
+                // Make sure the Xterm terminal window fits into the parent DIV container element
+                globalFitAddon.fit();
+            }
+		}
 
         RED.nodes.registerType('xterm_config', {
             category: 'config',
@@ -134,6 +142,7 @@
             },
             onpaletteremove: function () {
                 RED.sidebar.removeTab("sidebar-xterm");
+				RED.events.off("sidebar:resize", sidebarResizeEventHandler);
             },
             onpaletteadd: function () {
                 // Add the xterm.js CSS stylesheet to the page head section
@@ -152,6 +161,8 @@
                     disableOnEdit: true,
                     iconClass: "fa fa-terminal"
                 });
+                
+                RED.events.on("sidebar:resize", sidebarResizeEventHandler);
                 
                 // The html content of the config node-settings has been specified as a SECOND data-template.  We will show
                 // the same template both in the config node's config screen, and in the sidebar "Properties" tabsheet.
@@ -200,16 +211,33 @@
                         
                         // Hide the introduction text
                         var introText = document.getElementById('xterm_intro');
-                        introText.style.display = "none";
+
+                        if (introText) {
+                            introText.style.display = "none";
+                        }
                                         
+                        // Create a new Xterm.js Terminal window instance
+                        // Remark: the Terminal class is exported in the xterm.js file
                         globalTerminal = new Terminal(terminalOptions);
+                      
+                        // Create a new Xterm.js FitAddon instance, which can be used to let the terminal window fit into the parent DIV container element.
+                        // Remark: the FitAddon class is exported differently (compared to the Terminal class) in the xterm-addon-fit.js file
+                        globalFitAddon = new FitAddon.FitAddon();
+                        globalTerminal.loadAddon(globalFitAddon);
+      
+                        // Show the Xterm.js terminal window as a child of the parent DIV container element.
                         var terminalContainer = document.getElementById('terminalContainer');
                         globalTerminal.open(terminalContainer);
+                        
+                        // Make sure the Xterm terminal window fits into the parent DIV container element.
+                        // Afterwards the sidebarResizeEventHandler will redo this, every time the sidebar size is changed...
+                        globalFitAddon.fit();
 
+                        // Handle all terminal input from the user, and send it to the server
                         globalTerminal.onData(function(data) {
                             if (globalTerminalConfigNode.loggingEnabled) {
                                 var dataType = Object.prototype.toString.call(data);
-                                console.log("Terminal data to server (type = " + dataType + "): " + data);
+                                console.log("Terminal data to server (type = input): " + data);
                             }
                             
                             // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
@@ -225,12 +253,7 @@
                             var data = JSON.parse(dataAsString);
                             
                             // Only show data that is intended for this terminal
-                            if (data.terminalId === globalTerminalId) { 
-                                if (globalTerminalConfigNode.loggingEnabled) {
-                                    var contentType = Object.prototype.toString.call(data.content);
-                                    console.log("Terminal data from server (type = " + contentType + "): " + data);
-                                }
-                          
+                            if (data.terminalId === globalTerminalId) {                   
                                 var decodedString = "";
                             
                                 // Convert the base64 encoded string back to a string
@@ -239,18 +262,31 @@
                                     decodedString = atob(data.content);
                                 }
                                 else {
+                                    decodedString = data.content;
+                                }
+                               
+                                if (globalTerminalConfigNode.loggingEnabled) {
+                                    console.log("Terminal data from server (type = " + data.type + ") = " + decodedString);
+                                }
+                                
+                                if (data.type !== "data") {
+                                    // Xterm comments starts with a "!" character
+                                    decodedString = "! " + decodedString;
+                                    
                                     // Make sure the comment (error, info, ...) is not displayed after the prompt, but on the next line
                                     if (globalPreviousDataType === "data") {
-                                        decodedString = "\r\n";
+                                        decodedString = "\r\n" + decodedString;
                                     }                                
-                                    // Xterm comment starts with a "!" character
-                                    decodedString += "! ";
-                                    decodedString += data.content;
+
                                     // End all error/info/... with an enter, to make sure the next input continues on the next line
-                                    decodedString += "\r\n";
+                                    decodedString = decodedString + "\r\n";
                                 }
-                                    
-                                globalTerminal.write(decodedString);
+                                
+                                // Show the data in the terminal window, except repetitive errors 
+                                // (to avoid that e.g. 'pseudo terminal not started yet' appears for every character being typed)
+                                if (data.type !== "error" && globalPreviousDataType !== "error") {
+                                    globalTerminal.write(decodedString);
+                                }
                                 
                                 globalPreviousDataType = data.type;
                             }
@@ -286,9 +322,10 @@
                         //timeout: 3000
                     });              
                 });
+                
                 $("#node-clear-terminal").on("click", function (e) {
                     globalTerminal.clear();      
-                });                    
+                });                
                 
                 if (globalTabsheets === null) {
                     // Show tabsheets
@@ -377,7 +414,16 @@
         <input type="text" id="node-config-input-name" class="xterm-setting" placeholder="Name">
     </div>
     </br>
-    <div class="form-tips"><b>Terminal will be updated after deploy and refresh!</b></div>
+    
+    <!-- The terminal window dimensions should really match the dimensions of the pseudo terminal! -->
+    <!-- See https://github.com/xtermjs/xterm.js/issues/832 -->
+    <div class="form-tips"><b>Steps to apply the new settings to the terminal window:
+        <ol>
+            <li>Deploy your changes</li>
+            <li>Refresh the browser window</li>
+            <li>Restart the pseudo terminal (via 'start' button)</li>
+        </ol></b>
+    </div>
     </br>
     <div class="form-row">
         <label for="node-config-input-rows"><i class="fa fa-arrows-alt"></i> Grid</label>
@@ -450,7 +496,7 @@
                     <!-- Tabsheets -->
                     <ul style="background: #fff; min-width: 600px; margin-bottom: 20px;" id="node-xterm-tabs"></ul>
                 </div>
-                <div id="node-xterm-tabs-content" style=height:calc(100% - 100px)">
+                <div id="node-xterm-tabs-content" style="height:calc(100% - 100px)">
                     <!-- Content of all tabsheets -->
                     <div id="node-xterm-tab-terminal" class="node-xterm-tab-terminal" style="height: 100%; position: relative; margin-top: 30px;">           
                         <div class="form-row">
@@ -465,9 +511,10 @@
                             </button>
                         </div>
                         <div class="form-row" style="height: 100%;">
-                            <!-- Background color of the container DIV is black, to fake a terminal always being available (even before we are able to load it) -->
-                            <div id="terminalContainer" style="width: 100%; height: 100%; display: inline-block; padding: 3px; border: none !important; background: rgb(0, 0, 0) !important">
-                                <p id="xterm_intro"><span style="color:white">Click the "Start" button ...</span></p>
+                            <div id="terminalContainer" style="width: 100%; height: 100%;">
+                                <!-- We cannot create the xterm terminal window, when the parent DIV element is it not visible yet. -->
+                                <!-- Therefore we will wait for a user gesture, to make sure the DIV is visible... -->
+                                <p id="xterm_intro"><span style="color:darkred">Click the "Start" button to show the terminal...</span></p>
                             </div>
                         </div>
                     </div>
