@@ -209,12 +209,10 @@
                             fontFamily: 'Courier New'
                         };
                         
-                        // Hide the introduction text
-                        var introText = document.getElementById('xterm_intro');
-
-                        if (introText) {
-                            introText.style.display = "none";
-                        }
+                        // Hide all the introduction paragraphs
+                        [].forEach.call(document.querySelectorAll('.xterm_intro'), function (el) {
+                            el.style.display = "none";
+                        });
                                         
                         // Create a new Xterm.js Terminal window instance
                         // Remark: the Terminal class is exported in the xterm.js file
@@ -525,7 +523,9 @@
                             <div id="terminalContainer" style="width: 100%; height: 100%;">
                                 <!-- We cannot create the xterm terminal window, when the parent DIV element is it not visible yet. -->
                                 <!-- Therefore we will wait for a user gesture, to make sure the DIV is visible... -->
-                                <p id="xterm_intro"><span style="color:darkred">Click the "Start" button to show the terminal...</span></p>
+                                <p class="xterm_intro" style="margin-top: 10px;"><strong>Click the "Start" button to show the terminal...</strong></p>
+                                <p class="xterm_intro" style="color:red; margin-top: 20px"><strong><i style="font-size:20px" class="fa fa-exclamation-triangle"></i> Make sure your Node-RED environment is secure!</strong></p>
+                                <p class="xterm_intro"><i>Read the "Security" section on my <a target="_blank" href="https://github.com/bartbutenaers/node-red-contrib-xterm#security">readme</a> page for more information.</i></p>
                             </div>
                         </div>
                     </div>
