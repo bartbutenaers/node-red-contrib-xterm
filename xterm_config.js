@@ -111,7 +111,7 @@
         // When the previous ptyProcess was still running, we will stop it.
         if (xtermProcessInfoMap.has(terminalId)) {
             console.log("Previous ptyProcess was already started");
-            stopTerminal(terminalId, "restart", loggingEnabled);
+            stopTerminal(terminalId, "(re)start button", loggingEnabled);
         }
         
         try {
