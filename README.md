@@ -79,6 +79,10 @@ A short demo to explain how it works:
 
 ![xterm_demo_input](https://user-images.githubusercontent.com/14224149/71563905-d0d0e200-2a97-11ea-8d1d-29f08981ac03.gif)
 
+```
+[{"id":"800e772a.b109c8","type":"xterm_in","z":"e2675d9d.6854e","command":"ls -ltr","addEnter":true,"confirmation":false,"name":"Directory listing","x":1260,"y":180,"wires":[]},{"id":"5a5f258.ad842dc","type":"xterm_in","z":"e2675d9d.6854e","command":"df -h","addEnter":true,"confirmation":false,"name":"Top disc usage","x":1260,"y":240,"wires":[]},{"id":"8ae725e0.57d5a8","type":"xterm_in","z":"e2675d9d.6854e","command":"ifconfig","addEnter":true,"confirmation":false,"name":"Network configuration","x":1280,"y":300,"wires":[]},{"id":"598184d3.be34ec","type":"xterm_in","z":"e2675d9d.6854e","command":"Iwlist wlan0 scan","addEnter":true,"confirmation":false,"name":"Available wireless networks","x":1300,"y":360,"wires":[]},{"id":"236fb7f7.0affc8","type":"xterm_in","z":"e2675d9d.6854e","command":"reboot","addEnter":true,"confirmation":true,"name":"Reboot","x":1240,"y":420,"wires":[]},{"id":"9dba7376.805f1","type":"xterm_in","z":"e2675d9d.6854e","command":"shutdown -h now","addEnter":true,"confirmation":true,"name":"Shutdown","x":1250,"y":480,"wires":[]},{"id":"5a5741.492658c","type":"xterm_in","z":"e2675d9d.6854e","command":"pwd","addEnter":true,"confirmation":false,"name":"Current directory","x":1260,"y":120,"wires":[]},{"id":"ee8feb7c.0cf0d8","type":"xterm_in","z":"e2675d9d.6854e","command":"pwd\npwd\npwd","addEnter":false,"confirmation":false,"name":"Example script","x":1260,"y":540,"wires":[]}]
+```
+
 The following settings can be adjusted, to customize the behaviour of the Terminal Input node:
 
 ### Command(s):
@@ -139,3 +143,10 @@ All processes launched from node-pty will launch at the same permission level of
 The node-pty pseudo terminal is written partly in the C-language, which means it needs to be compiled during installation.  This requires the necessary build tools be installed on your system, and then it can cause a lot of headache solving all build conflichts...
 
 However this node uses [node-pty-prebuilt-multiarch](https://github.com/oznu/node-pty-prebuilt-multiarch), which offers prebuilt node-pty binaries for a series of operating systems and hardware architectures.  This way you can install this node hopefully a bit easier ...
+
+### Hearbeat
+When a flow editor is being closed in the browser, the corresponding pseudo terminal process on the server should be stopped.  Otherwise the pseudo terminal processes keep stacking up, and the number of pseudo terminals is limited by the host operating system.  Since the server side cannot detect a flow editor being disconnected (see Nick's [answer](https://discourse.nodered.org/t/detect-when-flow-editor-is-closed/18357)), the sidebar tab will send a heartbeat to the server every 5 seconds.  When such a heartbeat doesn't arrive in time, the pseudo terminal process (corresponding to the that terminal id) will be stopped automatically.
+
+As a result you can also *refresh* your (flow editor) browser page, without running into troubles: the old pseudo terminal process will be killed within 5 seconds if the page should get a new unique terminal id.  And a new terminal can be started...
+
+If this should occur unexpected (e.g. due to network latency problems), you just need to start the terminal again.  The *'Start'* and '*Stop*' buttons will always detect first whether a terminal is already running for this terminal id anyway ...
