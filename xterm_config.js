@@ -76,7 +76,7 @@
             // We will get a heartbeat from the client every 5 seconds.  When we haven't received that heartbeat within 10 seconds, we assume 
             // that the client has disconnected.  In that case the pseudo terminal of that client will be stopped...
             processInfo.timerId = setInterval(function() {
-                stopTerminal(terminalId, "by heartbeat", loggingEnabled);
+                stopTerminal(terminalId, "heartbeat", loggingEnabled);
             }, 10000);
         }
     }
@@ -85,21 +85,21 @@
         var processInfo = xtermProcessInfoMap.get(terminalId);
         
         if (processInfo) {        
-            try {           
-                xtermProcessInfoMap.delete(terminalId);
-                
+            try {
                 processInfo.ptyProcess.kill();
                 
                 if (processInfo.timerId) {
                     clearInterval(processInfo.timerId);
                 }
                 
+                xtermProcessInfoMap.delete(terminalId);
+                
                 // Let the client know that the pseudo terminal has been stopped, in case the client isn't disconnected 
                 // (but the heartbeat didn't arrive in time)
-                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudoterminal has been stopped", type: "info" } ));
+                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Pseudoterminal has been stopped (by " + reason + ")", type: "info" } ));
             }
             catch (err) {
-                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Cannot stop pseudoterminal: " + err, type: "error" } ));
+                RED.comms.publish("xterm_shell", JSON.stringify( { terminalId: terminalId, content: "Cannot stop pseudoterminal (by " + reason + "): " + err, type: "error" } ));
             }
         }
         else {
@@ -111,7 +111,7 @@
         // When the previous ptyProcess was still running, we will stop it.
         if (xtermProcessInfoMap.has(terminalId)) {
             console.log("Previous ptyProcess was already started");
-            stopTerminal(terminalId, "by restart", loggingEnabled);
+            stopTerminal(terminalId, "restart", loggingEnabled);
         }
         
         try {
@@ -151,7 +151,7 @@
                 // We arrive here always the ptyProcess is exited.  But when the trigger is a CLI command (e.g. "exit" in Linux),
                 // we still need to remove the ptyProcess from our map ...
                 if (xtermProcessInfoMap.has(terminalId)) {
-                    stopTerminal(terminalId, "", loggingEnabled);
+                    stopTerminal(terminalId, "exit command", loggingEnabled);
                 }
             });
             
@@ -159,7 +159,7 @@
                 // We arrive here always the ptyProcess is killed.  But when the trigger from somewhere outside,
                 // we still need to remove the ptyProcess from our map ...
                 if (xtermProcessInfoMap.has(terminalId)) {
-                    stopTerminal(terminalId, "", loggingEnabled);
+                    stopTerminal(terminalId, "SIGINT", loggingEnabled);
                 }
             });
 
@@ -278,7 +278,7 @@
                 res.status(200).json({rows: rows, columns: columns});
                 break;
             case "stop":
-                stopTerminal(req.params.terminal_id, "by user", loggingEnabled);
+                stopTerminal(req.params.terminal_id, "stop button", loggingEnabled);
                 res.status(200).json({});
                 break;
             case "write":
