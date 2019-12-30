@@ -73,11 +73,11 @@
                 processInfo.timerId = null;
             }
             
-            // We will get a heartbeat from the client every 5 seconds.  When we haven't received that heartbeat within 10 seconds, we assume 
+            // We will get a heartbeat from the client every 5 seconds.  When we haven't received that heartbeat within 15 seconds, we assume 
             // that the client has disconnected.  In that case the pseudo terminal of that client will be stopped...
             processInfo.timerId = setInterval(function() {
                 stopTerminal(terminalId, "heartbeat", loggingEnabled);
-            }, 10000);
+            }, 15000);
         }
     }
 
