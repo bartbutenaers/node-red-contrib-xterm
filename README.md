@@ -7,6 +7,17 @@ Run the following npm command in your Node-RED user directory (typically ~/.node
 npm install bartbutenaers/node-red-contrib-xterm
 ```
 
+## Security
+Since this node allows commands to be executed on the server, it is very important that your Node-RED is secured!  But you should take of that anyway, since other nodes (e.g. Exec and Daemon nodes) also allow execution of commands on the server ... 
+
+To avoid introducing extra security riscs, this node uses the standard Node-RED communication mechanism (see also the 'Detailed Information' section below):
++ The ajax calls are send to a Node-RED http admin endpoint.
++ The data is pushed via the Node-RED ```RED.comms``` websocket channel.
+
+As a result: when you have secured your Node-RED environment, the communication for this terminal also will be secured...
+
+All processes launched from node-pty will launch at the same permission level of the parent process (i.e. the Node-RED process). Take care particularly when using node-pty inside a server that's accessible on the internet.  It is recommended to launch the pseudo-terminal inside a container (like e.g. a Docker container) to protect the host machine.
+
 ## Node usage
 This contribution offers a terminal window entirely integrated into Node-RED.
 It consists out of two parts that closely work together:
@@ -129,15 +140,6 @@ This is also the main reason why I had to implement my own *Terminal Input* node
 It would have been nice to have a *Terminal output* node, to capture the output of a command and process that data in your Node-RED flow.  However such a Terminal Output node runs on the server, which means it is a single node instance that would get the data from all commands from all connected terminals.  This way data from all connected terminals gets mixed, which is totally useless.  Moreover the data would also contain the input from the user (so not only the terminal output)!  *Therefore it is not possible to create a useful Terminal Output node.* 
 
 It is also *not useful to have an output on the Terminal Input node*: a single Terminal Input node on the server side, will be visualized in every flow editor.  So the injected commands from all users will arrive at the same Terminal Input node instance, which means the data again will be mixed. 
-
-### Security
-The standard Node-RED communication mechanism is being used:
-+ The ajax calls are send to a Node-RED http admin endpoint.
-+ The data is pushed via the Node-RED ```RED.comms``` websocket channel.
-
-This means that when you have secured your Node-RED communications, that the communication for this terminal also will be secured...
-
-All processes launched from node-pty will launch at the same permission level of the parent process (i.e. the Node-RED process). Take care particularly when using node-pty inside a server that's accessible on the internet.  It is recommended to launch the pseudo-terminal inside a container (like e.g. a Docker container) to protect the host machine.
 
 ### Prebuild binaries
 The node-pty pseudo terminal is written partly in the C-language, which means it needs to be compiled during installation.  This requires the necessary build tools be installed on your system, and then it can cause a lot of headache solving all build conflichts...
