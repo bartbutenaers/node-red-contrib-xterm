@@ -220,11 +220,11 @@
             }
         });
     }
-    
+
     RED.nodes.registerType('xterm_config', XtermConfigurationNode);
 
     // Process the requests from the flow editor
-    RED.httpAdmin.get('/xterm_shell/:terminal_id/:command/:info', function(req, res) {
+    RED.httpAdmin.get('/xterm_shell/:terminal_id/:command/:info', RED.auth.needsPermission('xterm.write'), function(req, res) {
         // When a config node is available on the server side, we see whether logging should be enabled
         var loggingEnabled = xtermShellNode && xtermShellNode.loggingEnabled;
 
