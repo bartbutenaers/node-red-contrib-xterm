@@ -230,6 +230,7 @@
 
         switch (req.params.command) {
             case "static":
+                console.log("===> static path has been called");
                 var filePath;
                 
                 switch (req.params.info) {
@@ -259,6 +260,7 @@
                         
                 break;
             case "start":
+                console.log("===> start path has been called");
                 // The request (info) will contain the default dimensions '<default_rows>;<default_columns>'.
                 // This way the default dimensions only need to be hardcoded on the client side...
                 var params = req.params.info.split(";");
@@ -278,10 +280,12 @@
                 res.status(200).json({rows: rows, columns: columns});
                 break;
             case "stop":
+                console.log("===> stop path has been called");
                 stopTerminal(req.params.terminal_id, "stop button", loggingEnabled);
                 res.status(200).json({});
                 break;
             case "write":
+                console.log("===> write path has been called");
                 var base64Decoded = new Buffer(req.params.info, 'base64').toString('ascii');
                 
                 // Process the command line data (info contains command line input)
