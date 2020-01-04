@@ -86,6 +86,14 @@
         
         if (processInfo) {        
             try {
+                // The "exit" and "SIGINT" event handlers had been added to detect the ptyProcess being killed behind our back.
+                // But if we kill the process, we don't want those handlers to do anything.  Otherwise this happens when the (re)start button is clicked:
+                // 1. The current process is stopped
+                // 2. A new process is started
+                // 3. The exithandler is called (due to step 1), which would kill our new process (from step 2).
+                // This way we avoid that stap 3 happens, when we kill the process ourselves.
+                processInfo.ptyProcess.removeAllListeners("exit");
+             
                 processInfo.ptyProcess.kill();
                 
                 if (processInfo.timerId) {
