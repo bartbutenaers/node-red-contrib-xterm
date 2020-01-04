@@ -31,6 +31,8 @@
     // Declare this variable outside the 'function ($)', to make sure the xterm_in node can access it ...
     const globalTerminalId = createTerminalUUID();
     
+    console.log("===> globalTerminalId = " + globalTerminalId);
+    
     (function ($) {
         var globalTerminalConfigNode = null;
         var globalTerminal = null;
@@ -44,20 +46,25 @@
         // Caution: this function cannot be called from onpaletteadd, because then the RED.nodes are not filled yet!!!
         // !!!!!!!!!!!!!!! CALL THIS FUNCTION EVERYWHERE THE globalTerminalConfigNode IS BEING USED !!!!!!!!!!!!!!!
         function ensureXtermConfigNode() {
+            console.log("===> ensureXtermConfigNode started");
             // If we had find it previously, check if it has been deleted beneath us
             if (globalTerminalConfigNode !== null) {
+                console.log("===> globalTerminalConfigNode seems to be null");
                 var configNode = RED.nodes.node(globalTerminalConfigNode.id);
                 if (configNode === null) { globalTerminalConfigNode = null; }
             }
                 
             // If not found previously, let's go find it
             if (globalTerminalConfigNode === null) {
+                console.log("===> globalTerminalConfigNode still null");
                 var configNodes = [];
                 RED.nodes.eachConfig(function(configNode) {
                     if (configNode.type === 'xterm_config') { 
                         configNodes.push(configNode); 
                     }
                 });
+                
+                console.log("===> configNodes.length = " + configNodes.length);
                 
                 // Make sure we only have 1 config node
                 while (configNodes.length > 1) {
@@ -72,6 +79,7 @@
             
             // When it doesn't exist yet, create it if required
             if (globalTerminalConfigNode === null) {
+                console.log("===> create a config node");
                 // TODO controleren of de defaults door de config node code zelf toegepast worden????
                 
                 // Remark: since this config node is dynamically created (and only used in this sidebar which isn't another node), the config
@@ -104,6 +112,8 @@
                 // Add the new config node to the collection of Node-RED nodes
                 RED.nodes.add(globalTerminalConfigNode);
                 
+                console.log("===> RED.nodes.add executed");
+                
                 // Make sure the "Deploy" button becomes active
                 RED.nodes.dirty(true);
             }
@@ -111,8 +121,10 @@
         
         function sidebarResizeEventHandler() {
             if (globalFitAddon) {
+                console.log("===> globalFitAddon starting");
                 // Make sure the Xterm terminal window fits into the parent DIV container element
                 globalFitAddon.fit();
+                console.log("===> globalFitAddon started");
             }
 		}
 
@@ -141,10 +153,13 @@
                 return this.name;
             },
             onpaletteremove: function () {
+                console.log("===> onpaletteremove started");
                 RED.sidebar.removeTab("sidebar-xterm");
 				RED.events.off("sidebar:resize", sidebarResizeEventHandler);
+                console.log("===> onpaletteremove ended");
             },
             onpaletteadd: function () {
+                console.log("===> onpaletteadd started");
                 // Add the xterm.js CSS stylesheet to the page head section
                 $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/static/xterm.css" type="text/css" />');
                 
@@ -162,16 +177,21 @@
                     iconClass: "fa fa-terminal"
                 });
                 
+                console.log("===> RED.sidebar.addTab executed");
+                
                 RED.events.on("sidebar:resize", sidebarResizeEventHandler);
                 
                 // The html content of the config node-settings has been specified as a SECOND data-template.  We will show
                 // the same template both in the config node's config screen, and in the sidebar "Properties" tabsheet.
                 // This way we avoid the same html to be maintained twice.
                 $("#node-xterm-tab-settings").append($('script[type="text/x-red"][data-template-name="xterm_config"]').i18n().html());
+                
+                console.log("===> second data template added");
                         
                 // Once the container DIV element has been created, the terminal can be displayed as a child element
                 
                 $("#node-start-terminal").on("click", function (e) {
+                    console.log("===> the start button has been clicked");
                     if (globalTerminalConfigNode === null) {
                         ensureXtermConfigNode();
                     }
@@ -209,34 +229,47 @@
                             fontFamily: 'Courier New'
                         };
                         
+                        console.log("===> all intro paragraphs will be hidden");
+                        
                         // Hide all the introduction paragraphs
                         [].forEach.call(document.querySelectorAll('.xterm_intro'), function (el) {
                             el.style.display = "none";
                         });
+                        
+                        console.log("===> a new terminal instance will be created");
                                         
                         // Create a new Xterm.js Terminal window instance
                         // Remark: the Terminal class is exported in the xterm.js file
                         globalTerminal = new Terminal(terminalOptions);
+                        
+                        console.log("===> a new terminal instance has been be created");
                       
                         // Create a new Xterm.js FitAddon instance, which can be used to let the terminal window fit into the parent DIV container element.
                         // Remark: the FitAddon class is exported differently (compared to the Terminal class) in the xterm-addon-fit.js file
                         globalFitAddon = new FitAddon.FitAddon();
                         globalTerminal.loadAddon(globalFitAddon);
+                        
+                        console.log("===> the fit addon has been loaded");
       
                         // Show the Xterm.js terminal window as a child of the parent DIV container element.
                         var terminalContainer = document.getElementById('terminalContainer');
                         globalTerminal.open(terminalContainer);
                         
+                         console.log("===> the terminal will be open in parent div");
+                        
                         // Make sure the Xterm terminal window fits into the parent DIV container element.
                         // Afterwards the sidebarResizeEventHandler will redo this, every time the sidebar size is changed...
                         globalFitAddon.fit();
+                        
+                        console.log("===> the terminal will now fit");
 
                         // Handle all terminal input from the user, and send it to the server
                         globalTerminal.onData(function(data) {
-                            if (globalTerminalConfigNode.loggingEnabled) {
+                            console.log("===> onData has been started");
+                            //if (globalTerminalConfigNode.loggingEnabled) {
                                 var dataType = Object.prototype.toString.call(data);
                                 console.log("Terminal data to server (type = input): " + data);
-                            }
+                            //}
                             
                             // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
                             var base64Data = btoa(data);
@@ -244,10 +277,14 @@
                                 url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data,
                                 //timeout: 3000
                             });
+                            console.log("===> onData has been completed");
                         });
+                        
+                        console.log("onData has been registered");
                  
                         // Handle data that arrives from the server via the websocket channel
                         globalServerDataHandler = function(event, dataAsString) {
+                            console.log("===> globalServerDataHandler has been started");
                             var data = JSON.parse(dataAsString);
                             
                             // Only show data that is intended for this terminal
@@ -263,9 +300,9 @@
                                     decodedString = data.content;
                                 }
                                
-                                if (globalTerminalConfigNode.loggingEnabled) {
+                                //if (globalTerminalConfigNode.loggingEnabled) {
                                     console.log("Terminal data from server (type = " + data.type + ") = " + decodedString);
-                                }
+                                //}
                                 
                                 if (data.type !== "data") {
                                     // Xterm comments starts with a "!" character
@@ -288,9 +325,12 @@
                                 
                                 globalPreviousDataType = data.type;
                             }
+                            console.log("===> globalServerDataHandler has been completed");
                         }
                     
                         RED.comms.subscribe('xterm_shell', globalServerDataHandler);
+                        
+                        console.log("globalServerDataHandler has been registered");
                     }
                 
                     // Created with http://www.asciiarts.net/ where I used font 'Standard.flf'
@@ -302,6 +342,8 @@
                     //globalTerminal.write('\r\n*** |_| \_|\___/ \__,_|\___|     |_| \_\_____|____/  ***');
                     //globalTerminal.write('\r\n'); 
                     
+                    console.log("===> will do ajax call to start pseudo terminal");
+                    
                     // Pass the default rows and columns as 'info' parameter.  These will be used on the server side, when currently
                     // no config node has been deployed on the server yet...
                     var info = globalTerminalConfigNode.rows + ";" + globalTerminalConfigNode.columns;
@@ -310,12 +352,16 @@
                         url: "xterm_shell/" + globalTerminalId + "/start/" + info,
                         //timeout: 3000
                     });     
+                    console.log("===> executed ajax call to start pseudo terminal");
 
                     // As soon as the terminal window is started, it should have focus (so commands can be entered right away)
                     globalTerminal.focus();                    
+                    
+                    console.log("===> terminal window has focus");
                 });
                 
                 $("#node-stop-terminal").on("click", function (e) {
+                    console.log("===> stop button has been clicked");
                     // Leave the xterm terminal window open (on the client-side), to show feedback to the user.
                     // But stop the pty process on the server side
                     $.ajax({
@@ -329,16 +375,23 @@
                 });                
                 
                 if (globalTabsheets === null) {
+                    console.log("===> will do RED.tabs.create");
                     // Show tabsheets
                     globalTabsheets = RED.tabs.create({
                         id: "node-xterm-tabs",
                         onchange: function(tab) {
+                            console.log("===> tabsheet change");
+                        
                             // Show only the content (i.e. the children) of the selected tabsheet, and hide the others
                             $("#node-xterm-tabs-content").children().hide();
                             $("#" + tab.id).show();
                             
+                            console.log("===> only 1 tabsheet content visible");
+                            
                             if (tab.id === "node-xterm-tab-settings") {
                                 ensureXtermConfigNode();
+                                
+                                console.log("===> start showing all config properties");
                                 
                                 // When navigating to the settings tabsheet, all the config node properties need to be displayed
                                 // into the corresponding input fields
@@ -353,17 +406,23 @@
                                         $(this).val(propertyValue);
                                     }
                                 });
+                                
+                                 console.log("===> ended showing all config properties");
                             }
                             
                             if (tab.id === "node-xterm-tab-terminal") {
                                 if (globalTerminal) {
+                                    console.log("===> focus on terminal after tabsheet switch");
                                     // As soon as the terminal tabsheet becomes visible again, the terminal window should get focus
                                     // (so commands can be entered right away)
                                     globalTerminal.focus();
+                                    console.log("===> tabsheet has now focus");
                                 }
                             }                                
                         }
                     });
+                    
+                    console.log("===> done RED.tabs.create");
                     
                     globalTabsheets.addTab({
                         id: "node-xterm-tab-terminal",
@@ -375,8 +434,11 @@
                         label: "Settings"
                     });
                     
+                    console.log("===> 2x addTab executed");
+                    
                     // For every setting input field, we will have to store the changed values into the config node
                     $(".xterm-setting").on("change", function() {
+                        console.log("===> settings field has changed");
                         ensureXtermConfigNode();
                     
                         var propertyName = this.id.replace("node-config-input-", "");
@@ -398,6 +460,7 @@
                 }
                         
                 if (globalTimerId) {
+                    console.log("===> previous timer will be stopped");
                     clearInterval(globalTimerId);
                     globalTimerId = null;
                 }
@@ -405,13 +468,15 @@
                 // When the flow editor is closed, the corresponding pseudo terminal process (on server side) should be killed.
                 // However it seems there is no way to determine that on the server side, see:
                 // https://discourse.nodered.org/t/detect-when-flow-editor-is-closed/18357/3?u=bartbutenaers
-                // Therefore we will send a heartbeat every 5 seconds to the server.
+                // Therefore we will send a heartbeat every 10 seconds to the server.
                 globalTimerId = setInterval(function() {
                     $.ajax({
                         url: "xterm_shell/" + globalTerminalId +"/heartbeat/undefined",
                         //timeout: 3000                
                     });
                 }, 5000);
+                
+                console.log("===> a new timer has been created");
             }
         });
     })(jQuery);
