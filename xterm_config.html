@@ -293,11 +293,8 @@
                                     decodedString = decodedString + "\r\n";
                                 }
                                 
-                                // Show the data in the terminal window, except repetitive errors 
-                                // (to avoid that e.g. 'pseudo terminal not started yet' appears for every character being typed)
-                                if (data.type !== "error" && globalPreviousDataType !== "error") {
-                                    globalTerminal.write(decodedString);
-                                }
+                                // Show the data in the terminal window
+                                globalTerminal.write(decodedString);
                                 
                                 globalPreviousDataType = data.type;
                             }
@@ -449,17 +446,7 @@
                     $.ajax({
                         url: "xterm_shell/" + globalTerminalId +"/heartbeat/undefined",
                         error: function(data){
-                            // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
-                            var text = "Heartbeat failed: " + data.responseJSON.error;
-                            if (data.responseJSON.message) {
-                                text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
-                            }
-                           
-                            globalServerDataHandler(null, JSON.stringify({
-                                terminalId: globalTerminalId,                  
-                                type      : "error",
-                                content   : text
-                            }));
+                            // We cannot do anything here ...
                         }
                         //timeout: 3000                
                     });
