@@ -242,6 +242,19 @@
                             var base64Data = btoa(data);
                             $.ajax({
                                 url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data,
+                                error: function(data){
+                                    // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
+                                    var text = "Write failed: " + data.responseJSON.error;
+                                    if (data.responseJSON.message) {
+                                        text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
+                                    }
+                                   
+                                    globalServerDataHandler(null, JSON.stringify({
+                                        terminalId: globalTerminalId,                  
+                                        type      : "error",
+                                        content   : text
+                                    }));
+                                }
                                 //timeout: 3000
                             });
                         });
@@ -308,6 +321,19 @@
                     // Start the pty pseudo terminal process on the server side
                     $.ajax({
                         url: "xterm_shell/" + globalTerminalId + "/start/" + info,
+                        error: function(data){
+                            // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
+                            var text = "Start failed: " + data.responseJSON.error;
+                            if (data.responseJSON.message) {
+                                text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
+                            }
+                           
+                            globalServerDataHandler(null, JSON.stringify({
+                                terminalId: globalTerminalId,                  
+                                type      : "error",
+                                content   : text
+                            }));
+                        }
                         //timeout: 3000
                     });     
 
@@ -320,6 +346,19 @@
                     // But stop the pty process on the server side
                     $.ajax({
                         url: "xterm_shell/" + globalTerminalId +"/stop/undefined",
+                        error: function(data){
+                            // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
+                            var text = "Stop failed: " + data.responseJSON.error;
+                            if (data.responseJSON.message) {
+                                text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
+                            }
+                           
+                            globalServerDataHandler(null, JSON.stringify({
+                                terminalId: globalTerminalId,                  
+                                type      : "error",
+                                content   : text
+                            }));
+                        }
                         //timeout: 3000
                     });              
                 });
@@ -409,6 +448,19 @@
                 globalTimerId = setInterval(function() {
                     $.ajax({
                         url: "xterm_shell/" + globalTerminalId +"/heartbeat/undefined",
+                        error: function(data){
+                            // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
+                            var text = "Heartbeat failed: " + data.responseJSON.error;
+                            if (data.responseJSON.message) {
+                                text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
+                            }
+                           
+                            globalServerDataHandler(null, JSON.stringify({
+                                terminalId: globalTerminalId,                  
+                                type      : "error",
+                                content   : text
+                            }));
+                        }
                         //timeout: 3000                
                     });
                 }, 5000);
