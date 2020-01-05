@@ -236,82 +236,91 @@
         // When a config node is available on the server side, we see whether logging should be enabled
         var loggingEnabled = xtermShellNode && xtermShellNode.loggingEnabled;
 
-        switch (req.params.command) {
-            case "static":
-                var filePath;
-                
-                switch (req.params.info) {
-                    case "xterm.js":
-                        filePath = xtermJsPath;
-                        break;
-                    case "xterm-addon-fit.js":
-                        filePath = xtermFitJsPath;
-                        break;   
-                    case "xterm.css":
-                        filePath = xtermCssPath;
-                        break;                
-                    default:
-                        break;
-                }
-                
-                if (filePath) {
-                    // Send the requested static file to the client
-                    res.sendFile(filePath);
-                }
-                else {
-                    // Don't log because xterm also tries to load some mapping files, which are required to
-                    // do source mapping from Javascript to the original Typescript code.  But we don't need that.
-                    //console.log("Unknown javascript file '" + req.params.info + "'");
-                    res.status(404).json({error: 'Unknown static file ' + filePath});                        
-                }
-                        
-                break;
-            case "start":
-                // The request (info) will contain the default dimensions '<default_rows>;<default_columns>'.
-                // This way the default dimensions only need to be hardcoded on the client side...
-                var params = req.params.info.split(";");
-                var rows = params[0];
-                var columns = params[1];
-                
-                // When a config node is available on the server side, we will use it's dimensions to create a pseudo terminal.
-                if (xtermShellNode) {
-                    rows = xtermShellNode.rows;
-                    columns = xtermShellNode.columns;
-                }
+        try {
+            switch (req.params.command) {
+                case "static":
+                    var filePath;
+                    
+                    switch (req.params.info) {
+                        case "xterm.js":
+                            filePath = xtermJsPath;
+                            break;
+                        case "xterm-addon-fit.js":
+                            filePath = xtermFitJsPath;
+                            break;   
+                        case "xterm.css":
+                            filePath = xtermCssPath;
+                            break;                
+                        default:
+                            break;
+                    }
+                    
+                    if (filePath) {
+                        // Send the requested static file to the client
+                        res.sendFile(filePath);
+                    }
+                    else {
+                        // Don't log because xterm also tries to load some mapping files, which are required to
+                        // do source mapping from Javascript to the original Typescript code.  But we don't need that.
+                        //console.log("Unknown javascript file '" + req.params.info + "'");
+                        res.status(404).json({error: 'Unknown static file ' + filePath});                        
+                    }
+                            
+                    break;
+                case "start":
+                    // The request (info) will contain the default dimensions '<default_rows>;<default_columns>'.
+                    // This way the default dimensions only need to be hardcoded on the client side...
+                    var params = req.params.info.split(";");
+                    var rows = params[0];
+                    var columns = params[1];
+                    
+                    // When a config node is available on the server side, we will use it's dimensions to create a pseudo terminal.
+                    if (xtermShellNode) {
+                        rows = xtermShellNode.rows;
+                        columns = xtermShellNode.columns;
+                    }
 
-                startTerminal(req.params.terminal_id, rows, columns, loggingEnabled);
+                    startTerminal(req.params.terminal_id, rows, columns, loggingEnabled);
 
-                // Pass the rows and columns to the client, which have been used on the server to start the pseudo terminal.
-                // The client needs to use the SAME values to create an Xterm.js terminal window, to avoid conflicts!
-                res.status(200).json({rows: rows, columns: columns});
-                break;
-            case "stop":
-                stopTerminal(req.params.terminal_id, "stop button", loggingEnabled);
-                res.status(200).json({});
-                break;
-            case "write":
-                var base64Decoded = new Buffer(req.params.info, 'base64').toString('ascii');
-                
-                // Process the command line data (info contains command line input)
-                var errorText = writeDataToTerminal(req.params.terminal_id, base64Decoded, loggingEnabled);
-                
-                // The xterm_in node (doesn't listen to the websocket so it) has to be informed whether the command
-                // has been transferred to the pseudo terminal correctly
-                if (!errorText) {
+                    // Pass the rows and columns to the client, which have been used on the server to start the pseudo terminal.
+                    // The client needs to use the SAME values to create an Xterm.js terminal window, to avoid conflicts!
+                    res.status(200).json({rows: rows, columns: columns});
+                    break;
+                case "stop":
+                    stopTerminal(req.params.terminal_id, "stop button", loggingEnabled);
                     res.status(200).json({});
-                }
-                else {
-                    res.status(500).json({error: errorText});
-                }
-                break;
-            case "heartbeat":
-                // Restart the timer whenever a heartbeat arrives
-                startTimer(req.params.terminal_id);
-                res.status(200).json({});
-                break;
-            default:
-                console.log("Unknown command '" + req.params.command + "'");
-                res.status(404).json({error: 'Unknown command'});
+                    break;
+                case "write":
+                    var base64Decoded = new Buffer(req.params.info, 'base64').toString('ascii');
+                    
+                    // Process the command line data (info contains command line input)
+                    var errorText = writeDataToTerminal(req.params.terminal_id, base64Decoded, loggingEnabled);
+                    
+                    // The xterm_in node (doesn't listen to the websocket so it) has to be informed whether the command
+                    // has been transferred to the pseudo terminal correctly
+                    if (!errorText) {
+                        res.status(200).json({});
+                    }
+                    else {
+                        res.status(500).json({error: errorText});
+                    }
+                    break;
+                case "heartbeat":
+                    // Restart the timer whenever a heartbeat arrives
+                    startTimer(req.params.terminal_id);
+                    res.status(200).json({});
+                    break;
+                default:
+                    console.log("Unknown command '" + req.params.command + "'");
+                    res.status(404).json({error: 'Unknown command'});
+            }
+        }
+        catch(err) {
+            // Lots of server-side processing, so lots of things can go wrong.
+            // Avoid that the client doesn't know what is going on,i.e. avoid internal server errors (status 500)
+            res.status(404).json({error: err.name, message: err.message, stack: err.stack });
+            console.log("Error while executing command '" + req.params.command + "':");
+            console.log(err.stack);
         }
     });
 }
