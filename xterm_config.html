@@ -115,7 +115,6 @@
                 globalFitAddon.fit();
             }
 		}
-
         RED.nodes.registerType('xterm_config', {
             category: 'config',
             hasUsers: false,
@@ -182,7 +181,6 @@
                     // Remark: the rows and columns in the globalTerminalConfigNode will be used (on the server side to start the pseudo
                     // terminal process), when that config node has already been deployed.  Which means we get then the 
                     // globalTerminalConfigNode also here via a long roundtrip to the server ...
-
                     // Create the Xterm.js terminal screen only once.
                     // We can only do this when the parent DIV container is visible, otherwise the terminal will remain black without text!!!!
                     // So there seems to be a bug inside the 'open' function.  Similar issues:
@@ -230,7 +228,6 @@
                         // Make sure the Xterm terminal window fits into the parent DIV container element.
                         // Afterwards the sidebarResizeEventHandler will redo this, every time the sidebar size is changed...
                         globalFitAddon.fit();
-
                         // Handle all terminal input from the user, and send it to the server
                         globalTerminal.onData(function(data) {
                             if (globalTerminalConfigNode.loggingEnabled) {
@@ -288,7 +285,6 @@
                                     if (globalPreviousDataType === "data") {
                                         decodedString = "\r\n" + decodedString;
                                     }                                
-
                                     // End all error/info/... with an enter, to make sure the next input continues on the next line
                                     decodedString = decodedString + "\r\n";
                                 }
@@ -333,7 +329,6 @@
                         }
                         //timeout: 3000
                     });     
-
                     // As soon as the terminal window is started, it should have focus (so commands can be entered right away)
                     globalTerminal.focus();                    
                 });
@@ -548,13 +543,14 @@
                     <!-- Content of all tabsheets -->
                     <div id="node-xterm-tab-terminal" class="node-xterm-tab-terminal" style="height: 100%; position: relative; margin-top: 30px;">           
                         <div class="form-row">
-                            <button id="node-start-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Start terminal">
+                            <!-- Make sure to use type 'button' because the default type is 'submit', which causes a page refresh! -->
+                            <button type="button" id="node-start-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Start terminal">
                                 <i class="fa fa-play"></i>    
                             </button>
-                            <button id="node-stop-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Stop terminal">
+                            <button type="button" id="node-stop-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Stop terminal">
                                 <i class="fa fa-stop"></i>    
                             </button>
-                            <button id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
+                            <button type="button" id="node-clear-terminal" class="editor-button editor-button-small" style="margin-top: 4px;" title="Clear terminal">
                                 <i class="fa fa-trash"></i>    
                             </button>
                         </div>
