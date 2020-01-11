@@ -10,8 +10,8 @@
   See the License for the specific language governing permissions and
   limitations under the License.
 -->
-<script src="xterm_shell/undefined/static/xterm.js"></script>
-<script src="xterm_shell/undefined/static/xterm-addon-fit.js"></script>
+<script src="xterm_shell/static/xterm.js"></script>
+<script src="xterm_shell/static/xterm-addon-fit.js"></script>
 
 <script type="text/javascript">
     // See https://www.w3resource.com/javascript-exercises/javascript-math-exercise-23.php
@@ -145,7 +145,7 @@
             },
             onpaletteadd: function () {
                 // Add the xterm.js CSS stylesheet to the page head section
-                $('head').append('<link rel="stylesheet" href="xterm_shell/undefined/static/xterm.css" type="text/css" />');
+                $('head').append('<link rel="stylesheet" href="xterm_shell/static/xterm.css" type="text/css" />');
                 
                 // The html content of the sidebar page has been specified a a data-template, from where it can be loaded:
                 var content = $($('script[type="text/x-red"][data-template-name="xterm_config_sidebar"]').i18n().html());
