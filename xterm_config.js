@@ -230,43 +230,47 @@
     }
 
     RED.nodes.registerType('xterm_config', XtermConfigurationNode);
+    
+    // Make all static resources (i.e. library files) available to the flow editor.
+    // We use a separate endpoint, since no permissions are required to read those resources.
+    // Otherwise we get 'unauthorized' problems, when calling this endpoint from a 'script' tag.
+    // See details on https://discourse.nodered.org/t/unauthorized-when-accessing-custom-admin-endpoint/20201/4
+    RED.httpAdmin.get('/xterm_shell/static/:filename', function(req, res) {
+        var filePath;
+                    
+        switch (req.params.filename) {
+            case "xterm.js":
+                filePath = xtermJsPath;
+                break;
+            case "xterm-addon-fit.js":
+                filePath = xtermFitJsPath;
+                break;   
+            case "xterm.css":
+                filePath = xtermCssPath;
+                break;                
+            default:
+                break;
+        }
+        
+        if (filePath) {
+            // Send the requested static file to the client
+            res.sendFile(filePath);
+        }
+        else {
+            // Don't log because xterm also tries to load some mapping files, which are required to
+            // do source mapping from Javascript to the original Typescript code.  But we don't need that.
+            //console.log("Unknown javascript file '" + req.params.info + "'");
+            res.status(404).json({error: 'Unknown static file ' + filePath});                        
+        }
+    });
 
     // Process the requests from the flow editor
-    RED.httpAdmin.get('/xterm_shell/:terminal_id/:command/:info', RED.auth.needsPermission('xterm.write'), function(req, res) {
+    RED.httpAdmin.get('/xterm_shell/:terminal_id/:command/:info', RED.auth.needsPermission('xterm_shell.write'), function(req, res) {
         // When a config node is available on the server side, we see whether logging should be enabled
         var loggingEnabled = xtermShellNode && xtermShellNode.loggingEnabled;
 
         try {
             switch (req.params.command) {
-                case "static":
-                    var filePath;
-                    
-                    switch (req.params.info) {
-                        case "xterm.js":
-                            filePath = xtermJsPath;
-                            break;
-                        case "xterm-addon-fit.js":
-                            filePath = xtermFitJsPath;
-                            break;   
-                        case "xterm.css":
-                            filePath = xtermCssPath;
-                            break;                
-                        default:
-                            break;
-                    }
-                    
-                    if (filePath) {
-                        // Send the requested static file to the client
-                        res.sendFile(filePath);
-                    }
-                    else {
-                        // Don't log because xterm also tries to load some mapping files, which are required to
-                        // do source mapping from Javascript to the original Typescript code.  But we don't need that.
-                        //console.log("Unknown javascript file '" + req.params.info + "'");
-                        res.status(404).json({error: 'Unknown static file ' + filePath});                        
-                    }
-                            
-                    break;
                 case "start":
                     // The request (info) will contain the default dimensions '<default_rows>;<default_columns>'.
                     // This way the default dimensions only need to be hardcoded on the client side...
@@ -308,7 +312,7 @@
                 case "heartbeat":
                     // Restart the timer whenever a heartbeat arrives
                     startTimer(req.params.terminal_id);
-                    res.status(200).json({});
+                    res.status(200).json({}); 
                     break;
                 default:
                     console.log("Unknown command '" + req.params.command + "'");
@@ -318,7 +322,7 @@
         catch(err) {
             // Lots of server-side processing, so lots of things can go wrong.
             // Avoid that the client doesn't know what is going on,i.e. avoid internal server errors (status 500)
-            res.status(404).json({error: err.name, message: err.message, stack: err.stack });
+            res.status(500).json({error: err.name, message: err.message, stack: err.stack });
             console.log("Error while executing command '" + req.params.command + "':");
             console.log(err.stack);
         }
