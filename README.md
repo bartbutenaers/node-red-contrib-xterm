@@ -7,14 +7,17 @@ Run the following npm command in your Node-RED user directory (typically ~/.node
 npm install bartbutenaers/node-red-contrib-xterm
 ```
 
-## Security
-Since this node allows commands to be executed on the server, it is very important that your Node-RED is secured!  But you should take of that anyway, since other nodes (e.g. Exec and Daemon nodes) also allow execution of commands on the server ... 
+## Security !!!!!!!!
+
+:warning: ***Since this node allows commands to be executed on the server, it is very important that your Node-RED is secured!***
+
+But you should take of that anyway, since other nodes (e.g. Exec and Daemon nodes) also allow execution of commands on the server ... 
 
 To avoid introducing extra security riscs, this node uses the standard Node-RED communication mechanism (see also the 'Detailed Information' section below):
 + The ajax calls are send to a Node-RED http admin endpoint.
 + The data is pushed via the Node-RED ```RED.comms``` websocket channel.
 
-As a result: when you have secured your Node-RED environment, the communication for this terminal also will be secured...
+As a result: when you have secured your Node-RED environment, the communication for this terminal will have the same security level...
 
 All processes launched from node-pty will launch at the same permission level of the parent process (i.e. the Node-RED process). Take care particularly when using node-pty inside a server that's accessible on the internet.  It is recommended to launch the pseudo-terminal inside a container (like e.g. a Docker container) to protect the host machine.
 
@@ -27,6 +30,8 @@ It consists out of two parts that closely work together:
 Each flow editor instance will have its own terminal session on the server side, which means that each editor will have its own independent terminal screen.  As a result, multiple users can execute commands (in their own flow editor instance), independently from each other.
 
 Currently macOS, Linux and Windows are supported on the server side.
+
+Remark: this node can be used to connect to the server, where the Node-RED backend is running.  But it is also possible to logon to other servers, for example on Linux using the ```ssh``` command.  Thanks to [Paul](https://github.com/juggledad) for explaining this step by step in this [discussion](https://discourse.nodered.org/t/announce-node-red-contrib-xterm-second-beta-sidebar/19718/45).
 
 ## Sidebar tabsheet
 
@@ -144,7 +149,13 @@ It is also *not useful to have an output on the Terminal Input node*: a single T
 ### Prebuild binaries
 The node-pty pseudo terminal is written partly in the C-language, which means it needs to be compiled during installation.  This requires the necessary build tools be installed on your system, and then it can cause a lot of headache solving all build conflichts...
 
-However this node uses [node-pty-prebuilt-multiarch](https://github.com/oznu/node-pty-prebuilt-multiarch), which offers prebuilt node-pty binaries for a series of operating systems and hardware architectures.  This way you can install this node hopefully a bit easier ...
+However this node uses [node-pty-prebuilt-multiarch](https://github.com/oznu/node-pty-prebuilt-multiarch), which offers prebuilt node-pty binaries for a series of operating systems and hardware architectures:
+
+![binaries](https://user-images.githubusercontent.com/14224149/72219154-2f3f9b00-3543-11ea-883f-ed415ddaccd2.png)
+
+This way you can install this node hopefully a bit easier ...
+
+But there will be lots of other platforms where the binaries will be build automatically.  On some platforms you will even have execute manual steps to get a succesfull build, like e.g. for Oracle Cloud Free Instance as described [here](https://discourse.nodered.org/t/announce-node-red-contrib-xterm-second-beta-sidebar/19718/2).
 
 ### Hearbeat
 When a flow editor is being closed in the browser, the corresponding pseudo terminal process on the server should be stopped.  Otherwise the pseudo terminal processes keep stacking up, and the number of pseudo terminals is limited by the host operating system.  Since the server side cannot detect a flow editor being disconnected (see Nick's [answer](https://discourse.nodered.org/t/detect-when-flow-editor-is-closed/18357)), the sidebar tab will send a heartbeat to the server every 5 seconds.  When such a heartbeat doesn't arrive within 15 seconds, the pseudo terminal process (corresponding to the that terminal id) will be stopped automatically.
