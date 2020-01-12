@@ -234,15 +234,28 @@
                                 var dataType = Object.prototype.toString.call(data);
                                 console.log("Terminal data to server (type = input): " + data);
                             }
-                            
-                            // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport
+
+                            // Convert the data to base64 to make sure that spaces, newlines, ... don't get lost during transport.
+                            // Use POST instead of a GET with query parameters, because some browsers will cache all the different GET requests...
                             var base64Data = btoa(data);
                             $.ajax({
-                                url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data,
+                                url: "xterm_shell/command",
+                                method: "POST",
+                                data: {
+                                    terminal_id: globalTerminalId,
+                                    command: "write",
+                                    info: base64Data 
+                                },
                                 error: function(data){
                                     // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
-                                    var text = "Write failed: " + data.responseJSON.error;
-                                    if (data.responseJSON.message) {
+                                    var text = "Write failed: ";
+                                    if (data.responseJSON && data.responseJSON.error) {
+                                        text = text + data.responseJSON.error;
+                                    }
+                                    else {
+                                        text = text + data.responseText;
+                                    }
+                                    if (data.responseJSON && data.responseJSON.message) {
                                         text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
                                     }
                                    
@@ -311,13 +324,27 @@
                     // Pass the default rows and columns as 'info' parameter.  These will be used on the server side, when currently
                     // no config node has been deployed on the server yet...
                     var info = globalTerminalConfigNode.rows + ";" + globalTerminalConfigNode.columns;
+                    
                     // Start the pty pseudo terminal process on the server side
+                    // Use POST instead of a GET with query parameters, because some browsers will cache all the different GET requests...
                     $.ajax({
-                        url: "xterm_shell/" + globalTerminalId + "/start/" + info,
+                        url: "xterm_shell/command",
+                        method: "POST",
+                        data: {
+                            terminal_id: globalTerminalId,
+                            command: "start",
+                            info: info 
+                        },
                         error: function(data){
                             // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
-                            var text = "Start failed: " + data.responseJSON.error;
-                            if (data.responseJSON.message) {
+                            var text = "Start failed: ";
+                            if (data.responseJSON && data.responseJSON.error) {
+                                text = text + data.responseJSON.error;
+                            }
+                            else {
+                                text = text + data.responseText;
+                            }
+                            if (data.responseJSON && data.responseJSON.message) {
                                 text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
                             }
                            
@@ -336,12 +363,24 @@
                 $("#node-stop-terminal").on("click", function (e) {
                     // Leave the xterm terminal window open (on the client-side), to show feedback to the user.
                     // But stop the pty process on the server side
+                    // Use POST instead of a GET with query parameters, because some browsers will cache all the different GET requests...
                     $.ajax({
-                        url: "xterm_shell/" + globalTerminalId +"/stop/undefined",
+                        url: "xterm_shell/command",
+                        method: "POST",
+                        data: {
+                            terminal_id: globalTerminalId,
+                            command: "stop"
+                        },
                         error: function(data){
                             // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
-                            var text = "Stop failed: " + data.responseJSON.error;
-                            if (data.responseJSON.message) {
+                            var text = "Stop failed: ";
+                            if (data.responseJSON && data.responseJSON.error) {
+                                text = text + data.responseJSON.error;
+                            }
+                            else {
+                                text = text + data.responseText;
+                            }
+                            if (data.responseJSON && data.responseJSON.message) {
                                 text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
                             }
                            
@@ -438,8 +477,14 @@
                 // https://discourse.nodered.org/t/detect-when-flow-editor-is-closed/18357/3?u=bartbutenaers
                 // Therefore we will send a heartbeat every 5 seconds to the server.
                 globalTimerId = setInterval(function() {
+                    // Use POST instead of a GET with query parameters, because some browsers will cache all the different GET requests...
                     $.ajax({
-                        url: "xterm_shell/" + globalTerminalId +"/heartbeat/undefined",
+                        url: "xterm_shell/command",
+                        method: "POST",
+                        data: {
+                            terminal_id: globalTerminalId,
+                            command: "heartbeat"
+                        },
                         error: function(data){
                             // We cannot do anything here ...
                         }
