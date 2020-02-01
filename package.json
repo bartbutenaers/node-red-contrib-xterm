@@ -3,7 +3,6 @@
     "version"      : "0.0.1",
     "description"  : "A Node-RED node terminal front-end, to execute backend CLI commands",
     "dependencies": {
-       "xterm": "4.2.0-vscode1",
        "xterm-addon-fit": "0.3.0",
        "node-pty-prebuilt-multiarch": "0.9.0"
     },
