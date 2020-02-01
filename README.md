@@ -7,6 +7,12 @@ Run the following npm command in your Node-RED user directory (typically ~/.node
 npm install bartbutenaers/node-red-contrib-xterm
 ```
 
+*Remark: when installing this node, NPM will show a warning in the console log:*
+
+![npm warning](https://user-images.githubusercontent.com/14224149/73590674-6c190500-44e5-11ea-85bb-e90875fd12e7.png)
+
+*Reason is that the xterm-addon-fit (which is an xterm plugin) has xterm as (peer) dependency in its [package.json](https://github.com/xtermjs/xterm.js/blob/master/addons/xterm-addon-fit/package.json) file, and since npm version 3.x such peer dependencies aren't installed automatically anymore.  But that is NO problem since xterm is installed automatically anyway, when you install this Node-RED node ...*
+
 ## Security !!!!!!!!
 
 :warning: ***Since this node allows commands to be executed on the server, it is very important that your Node-RED is secured!***
