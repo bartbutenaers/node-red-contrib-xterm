@@ -96,14 +96,33 @@
                 var base64Data = btoa(command);
                 
                 $.ajax({
-                    // Use the globalTerminalId, which is a global variable set by the sidebar panel (see xterm_config.js).
-                    url: "xterm_shell/" + globalTerminalId + "/write/" + base64Data,
+                    url: "xterm_shell/command",
+                    method: "POST",
+                    data: {
+                        // Use the globalTerminalId, which is a global variable set by the sidebar panel (see xterm_config.js).
+                        terminal_id: globalTerminalId,
+                        command: "write",
+                        info: base64Data 
+                    },
                     success: function(resp) {
                         RED.notify("Command has been send to the pseudo terminal", "success");
                     },
-                    error: function(jqXHR,textStatus,errorThrown) {
-                        RED.notify(jqXHR.responseJSON.error, "error");
+                    error: function(data){
+                        // When a message (and stack) field are passed by the server, this means the server has logged a stacktrace
+                        var text = "Write failed: ";
+                        if (data.responseJSON && data.responseJSON.error) {
+                            text = text + data.responseJSON.error;
+                        }
+                        else {
+                            text = text + data.responseText;
+                        }
+                        if (data.responseJSON && data.responseJSON.message) {
+                            text = text + ": " + data.responseJSON.message + " (see Node-RED log for details)";
+                        }
+                       
+                        RED.notify(text, "error");
                     }
+                    //timeout: 3000
                 });
             }
         }
