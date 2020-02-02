@@ -25,7 +25,11 @@
     // See https://discourse.nodered.org/t/use-files-from-dependent-npm-module/17978/5?u=bartbutenaers
     // -------------------------------------------------------------------------------------------------
     var xtermPath = require.resolve("xterm");
-    xtermPath = xtermPath.substring(0, xtermPath.indexOf("xterm") + 5);
+    
+    // For example suppose the require.resolved results in xtermPath = /home/pi/node-red-contrib-xterm/node_modules/xterm/lib/xterm.js
+    // Then we need to strip the part after the /xterm/ folder, which means xtermPath = /home/pi/node-red-contrib-xterm/node_modules/xterm/
+    // And then we need to find the /lib subfolder, which means xtermJsPath = /home/pi/node-red-contrib-xterm/node_modules/xterm/lib
+    xtermPath = xtermPath.substring(0, xtermPath.indexOf(path.sep + "xterm" + path.sep) + 6);
     
     var xtermJsPath = path.join(xtermPath, 'lib', 'xterm.js');
     if (!fs.existsSync(xtermJsPath)) {
@@ -37,13 +41,13 @@
     if (!fs.existsSync(xtermCssPath)) {
         console.log("Css file " + xtermCssPath + " does not exist");
         xtermCssPath = null;
-    }      
+    }
     
     // -------------------------------------------------------------------------------------------------
     // Determining the path to the files in the dependent xterm-addon-fi module once.
     // -------------------------------------------------------------------------------------------------
     var xtermFitPath = require.resolve("xterm-addon-fit");
-    xtermFitPath = xtermFitPath.substring(0, xtermFitPath.indexOf("xterm-addon-fit") + 15);
+    xtermFitPath = xtermFitPath.substring(0, xtermFitPath.indexOf(path.sep + "xterm-addon-fit" + path.sep) + 16);
     
     var xtermFitJsPath = path.join(xtermFitPath, 'lib', 'xterm-addon-fit.js');
     if (!fs.existsSync(xtermFitJsPath)) {
