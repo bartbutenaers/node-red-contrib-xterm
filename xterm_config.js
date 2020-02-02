@@ -235,7 +235,7 @@
     // We use a separate endpoint, since no permissions are required to read those resources.
     // Otherwise we get 'unauthorized' problems, when calling this endpoint from a 'script' tag.
     // See details on https://discourse.nodered.org/t/unauthorized-when-accessing-custom-admin-endpoint/20201/4
-    RED.httpAdmin.get('/xterm_shell/static/:filename', function(req, res) {
+    RED.httpAdmin.get('/xterm_shell/lib/:filename', function(req, res) {
         var filePath;
                     
         switch (req.params.filename) {
