@@ -17,7 +17,7 @@ npm install bartbutenaers/node-red-contrib-xterm
 
 :warning: ***Since this node allows commands to be executed on the server, it is very important that your Node-RED is secured!***
 
-But you should take of that anyway, since other nodes (e.g. Exec and Daemon nodes) also allow execution of commands on the server ... 
+But you should take care of that anyway, since other nodes (e.g. Exec and Daemon nodes) also allow execution of commands on the server ... 
 
 To avoid introducing extra security riscs, this node uses the standard Node-RED communication mechanism (see also the 'Detailed Information' section below):
 + The ajax calls are send to a Node-RED http admin endpoint.
