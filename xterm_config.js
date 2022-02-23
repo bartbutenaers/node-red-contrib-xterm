@@ -19,6 +19,7 @@
     var process = require('process');
     var path = require('path');
     const fs = require('fs');
+    const {EOL} = require('os');
     
     // -------------------------------------------------------------------------------------------------
     // Determining the path to the files in the dependent xterm module once.
@@ -305,6 +306,13 @@
                     break;
                 case "write":
                     var base64Decoded = new Buffer(info, 'base64').toString('ascii');
+                    
+                    // On Windows the line-endings are a carriage return (\r) and a newline(\n), also referred to as CR/LF. 
+                    // On UNIX the line-endings are a newline character (\n), also referred to as a linefeed (LF).
+                    // If the EOL of the current operating system differs from \r\n (which we use by default), then adapt it.
+                    if (EOL != "\r\n") {
+                        base64Decoded = base64Decoded.replace("\r\n", EOL);
+                    }
                     
                     // Process the command line data (info contains command line input)
                     var errorText = writeDataToTerminal(terminal_id, base64Decoded, loggingEnabled);
