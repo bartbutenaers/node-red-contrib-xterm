@@ -19,6 +19,7 @@
     var process = require('process');
     var path = require('path');
     const fs = require('fs');
+    const {EOL} = require('os');
     
     // -------------------------------------------------------------------------------------------------
     // Determining the path to the files in the dependent xterm module once.
@@ -267,6 +268,21 @@
             res.status(404).json({error: 'Unknown static file ' + filePath});                        
         }
     });
+    
+    // Determine the line endings
+    function determineLineEnding(text) {                
+        var index = text.indexOf('\n');
+        
+        if (index < 0) {
+            return null;
+        }
+        
+        if (index > 0 && text[index - 1] === '\r') {
+             return "\r\n";
+        }
+        
+        return "\n";
+    }
 
     // Process the POST requests from the flow editor
     RED.httpAdmin.post('/xterm_shell/command', RED.auth.needsPermission('xterm_shell.write'), function(req, res) {
@@ -305,6 +321,16 @@
                     break;
                 case "write":
                     var base64Decoded = new Buffer(info, 'base64').toString('ascii');
+                    
+                    var lineEnding = determineLineEnding(base64Decoded);
+                    
+                    // On Windows the line-endings are a carriage return (\r) and a newline(\n), also referred to as CR/LF. 
+                    // On UNIX the line-endings are a newline character (\n), also referred to as a linefeed (LF).
+                    // If the EOL of the current operating system differs from \r\n (which we use by default), then adapt it.
+                    // Because the flow editor (where the code has been entered) might be running on a different OS...
+                    if (lineEnding != EOL) {
+                        base64Decoded = base64Decoded.replace(lineEnding, EOL);
+                    }
                     
                     // Process the command line data (info contains command line input)
                     var errorText = writeDataToTerminal(terminal_id, base64Decoded, loggingEnabled);
