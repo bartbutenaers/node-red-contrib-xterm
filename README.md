@@ -13,6 +13,11 @@ npm install bartbutenaers/node-red-contrib-xterm
 
 *Reason is that the xterm-addon-fit (which is an xterm plugin) has xterm as (peer) dependency in its [package.json](https://github.com/xtermjs/xterm.js/blob/master/addons/xterm-addon-fit/package.json) file, and since npm version 3.x such peer dependencies aren't installed automatically anymore.  But that is NO problem since xterm is installed automatically anyway, when you install this Node-RED node ...*
 
+## Support my Node-RED developments
+Please buy my wife a coffee to keep her happy, while I am busy developing Node-RED stuff for you ...
+
+<a href="https://www.buymeacoffee.com/bartbutenaers" target="_blank"><img src="https://www.buymeacoffee.com/assets/img/custom_images/orange_img.png" alt="Buy my wife a coffee" style="height: 41px !important;width: 174px !important;box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;-webkit-box-shadow: 0px 3px 2px 0px rgba(190, 190, 190, 0.5) !important;" ></a>
+
 ## Security !!!!!!!!
 
 :warning: ***Since this node allows commands to be executed on the server, it is very important that your Node-RED is secured!***
